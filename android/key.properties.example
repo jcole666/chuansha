@@ -1,0 +1,14 @@
+# 复制这个文件为 android/key.properties，填入你自己的签名信息。
+#
+# ⚠️ key.properties 千万不要提交到 git（已在 android/.gitignore 里忽略）。
+#
+# 生成 keystore：
+#   keytool -genkey -v -keystore chuansha-release.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias chuansha
+#
+# storeFile 用绝对路径，或相对 android/app 的路径。
+
+storeFile=/path/to/chuansha-release.jks
+storePassword=你的store密码
+keyAlias=chuansha
+keyPassword=你的key密码
