@@ -29,6 +29,9 @@ class _AuthPageState extends ConsumerState<AuthPage>
   final _formKey = GlobalKey<FormState>();
   late UserGender _selectedGender = widget.initialGender;
 
+  /// 重置密码邮件发送中
+  bool _isSendingReset = false;
+
   @override
   void initState() {
     super.initState();
@@ -67,9 +70,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('登录 / 注册'),
-      ),
+      appBar: AppBar(title: const Text('登录 / 注册')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -90,8 +91,8 @@ class _AuthPageState extends ConsumerState<AuthPage>
                 Text(
                   '穿啥',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
@@ -127,10 +128,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
 
                 // ===== 性别选择（仅注册时显示）=====
                 if (isRegister) ...[
-                  Text(
-                    '选择性别',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text('选择性别', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -139,7 +137,8 @@ class _AuthPageState extends ConsumerState<AuthPage>
                           icon: Icons.male,
                           label: '男',
                           isSelected: _selectedGender == UserGender.male,
-                          onTap: () => setState(() => _selectedGender = UserGender.male),
+                          onTap: () =>
+                              setState(() => _selectedGender = UserGender.male),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -148,7 +147,9 @@ class _AuthPageState extends ConsumerState<AuthPage>
                           icon: Icons.female,
                           label: '女',
                           isSelected: _selectedGender == UserGender.female,
-                          onTap: () => setState(() => _selectedGender = UserGender.female),
+                          onTap: () => setState(
+                            () => _selectedGender = UserGender.female,
+                          ),
                         ),
                       ),
                     ],
@@ -201,6 +202,26 @@ class _AuthPageState extends ConsumerState<AuthPage>
                     ),
                   ),
 
+                // 忘记密码（仅登录模式；注册模式没有"忘记"一说）
+                if (!isRegister)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isSendingReset
+                          ? null
+                          : () => _showResetDialog(notifier),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        '忘记密码？',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ),
+
                 const SizedBox(height: 24),
 
                 // 提交按钮
@@ -235,6 +256,49 @@ class _AuthPageState extends ConsumerState<AuthPage>
     );
   }
 
+  /// 弹窗输入邮箱并发送重置密码邮件
+  Future<void> _showResetDialog(AuthNotifier notifier) async {
+    final controller = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('重置密码'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(hintText: '输入注册时用的邮箱'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('发送'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (email == null || email.isEmpty || !mounted) return;
+
+    setState(() => _isSendingReset = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await notifier.sendPasswordReset(email);
+    if (!mounted) return;
+    setState(() => _isSendingReset = false);
+
+    messenger.showSnackBar(
+      SnackBar(content: Text(error ?? '重置链接已发送到 $email，请查收邮件')),
+    );
+  }
+
   void _submit(AuthNotifier notifier) {
     if (!_formKey.currentState!.validate()) return;
 
@@ -260,22 +324,24 @@ class _AuthPageState extends ConsumerState<AuthPage>
 
     try {
       // 1. 确保用户记录存在（只插 id，100% 满足外键）
-      await Supabase.instance.client
-          .from('users')
-          .upsert({'id': uid});
+      await Supabase.instance.client.from('users').upsert({'id': uid});
       // 2. 尝试补充性别（若 gender 列存在）
       try {
-        await Supabase.instance.client.from('users').update({
-          'gender': _selectedGender == UserGender.male ? 'male' : 'female',
-        }).eq('id', uid);
+        await Supabase.instance.client
+            .from('users')
+            .update({
+              'gender': _selectedGender == UserGender.male ? 'male' : 'female',
+            })
+            .eq('id', uid);
       } catch (_) {
         // gender 列可能不存在，忽略
       }
       // 3. 尝试补充邮箱（若 email 列存在）
       try {
-        await Supabase.instance.client.from('users').update({
-          'email': _emailController.text.trim(),
-        }).eq('id', uid);
+        await Supabase.instance.client
+            .from('users')
+            .update({'email': _emailController.text.trim()})
+            .eq('id', uid);
       } catch (_) {
         // email 列可能不存在，忽略
       }
@@ -358,7 +424,9 @@ class _GenderCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
+                color: isSelected
+                    ? AppTheme.primaryColor
+                    : AppTheme.textSecondary,
               ),
             ),
           ],

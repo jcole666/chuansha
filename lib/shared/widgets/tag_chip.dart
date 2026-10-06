@@ -42,9 +42,7 @@ class TagChip extends StatelessWidget {
         selectedColor: theme.colorScheme.primary.withValues(alpha: 0.15),
         checkmarkColor: theme.colorScheme.primary,
         side: BorderSide.none,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       );
     }
 
@@ -55,9 +53,7 @@ class TagChip extends StatelessWidget {
         onDeleted: onDeleted,
         deleteIconColor: theme.colorScheme.onSurface.withValues(alpha: 0.5),
         side: BorderSide.none,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       );
     }
 
@@ -65,9 +61,7 @@ class TagChip extends StatelessWidget {
     return Chip(
       label: Text(label),
       side: BorderSide.none,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
 }

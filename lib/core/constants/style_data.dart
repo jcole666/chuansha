@@ -5,12 +5,5 @@
 class StyleData {
   StyleData._();
 
-  static const List<String> presetStyles = [
-    '休闲',
-    '职场',
-    '甜美',
-    '酷感',
-    '复古',
-    '运动',
-  ];
+  static const List<String> presetStyles = ['休闲', '职场', '甜美', '酷感', '复古', '运动'];
 }

@@ -52,7 +52,11 @@ class _OutfitListPageState extends ConsumerState<OutfitListPage> {
                   final outfit = state.outfits[index];
                   return _OutfitCard(
                     outfit: outfit,
-                    items: state.getItemsForOutfit(outfit, wardrobeState.allItems),
+                    items: state.getItemsForOutfit(
+                      outfit,
+                      wardrobeState.allItems,
+                    ),
+                    onEdit: () => _showEditDialog(outfit),
                     onDelete: () => _confirmDelete(outfit),
                   );
                 },
@@ -87,7 +91,9 @@ class _OutfitListPageState extends ConsumerState<OutfitListPage> {
     );
     if (confirmed != true) return;
 
-    final ok = await ref.read(outfitListProvider.notifier).deleteOutfit(outfit.id);
+    final ok = await ref
+        .read(outfitListProvider.notifier)
+        .deleteOutfit(outfit.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(ok ? '已删除「${outfit.name}」' : '删除失败，请检查网络后重试')),
@@ -99,7 +105,11 @@ class _OutfitListPageState extends ConsumerState<OutfitListPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.auto_awesome_mosaic, size: 64, color: Colors.grey.shade300),
+          Icon(
+            Icons.auto_awesome_mosaic,
+            size: 64,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 16),
           Text('来创建一个搭配组合吧', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -120,23 +130,43 @@ class _OutfitListPageState extends ConsumerState<OutfitListPage> {
     final allItems = ref.read(wardrobeListProvider).allItems;
 
     if (allItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('衣橱里还没有衣服，先录入几件再搭配吧')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('衣橱里还没有衣服，先录入几件再搭配吧')));
       return;
     }
 
     final outfit = await showDialog<Outfit>(
       context: context,
-      builder: (ctx) => _CreateOutfitDialog(allItems: allItems),
+      builder: (ctx) => _OutfitFormDialog(allItems: allItems),
     );
     if (outfit == null) return;
 
     final ok = await notifier.addOutfit(outfit);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? '搭配已保存' : '保存失败，请检查网络后重试')),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(ok ? '搭配已保存' : '保存失败，请检查网络后重试')));
+  }
+
+  /// 编辑搭配（改名称 / 描述 / 增减单品）
+  ///
+  /// 复用同一个表单弹窗，传入 initial 即为编辑模式。
+  Future<void> _showEditDialog(Outfit outfit) async {
+    final notifier = ref.read(outfitListProvider.notifier);
+    final allItems = ref.read(wardrobeListProvider).allItems;
+
+    final updated = await showDialog<Outfit>(
+      context: context,
+      builder: (ctx) => _OutfitFormDialog(allItems: allItems, initial: outfit),
     );
+    if (updated == null || !mounted) return;
+
+    final ok = await notifier.updateOutfit(updated);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(ok ? '搭配已更新' : '更新失败，请检查网络后重试')));
   }
 }
 
@@ -144,9 +174,15 @@ class _OutfitListPageState extends ConsumerState<OutfitListPage> {
 class _OutfitCard extends StatelessWidget {
   final Outfit outfit;
   final List<ClothingItem> items;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const _OutfitCard({required this.outfit, required this.items, required this.onDelete});
+  const _OutfitCard({
+    required this.outfit,
+    required this.items,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -157,14 +193,17 @@ class _OutfitCard extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 80, height: 80,
+              width: 80,
+              height: 80,
               child: Row(
                 children: items.take(3).map((item) {
                   return Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: ItemImage(imageUrl: item.imageUrl,
-                          fit: BoxFit.cover),
+                      child: ItemImage(
+                        imageUrl: item.imageUrl,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -175,17 +214,35 @@ class _OutfitCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(outfit.name, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    outfit.name,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   if (outfit.description != null)
-                    Text(outfit.description!, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      outfit.description!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   const SizedBox(height: 4),
-                  Text('${outfit.itemIds.length} 件 · 穿过 ${outfit.wearCount} 次',
-                      style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    '${outfit.itemIds.length} 件 · 穿过 ${outfit.wearCount} 次',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ],
               ),
             ),
-            IconButton(icon: const Icon(Icons.delete_outline, size: 20), onPressed: onDelete),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: '编辑',
+              onPressed: onEdit,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              tooltip: '删除',
+              onPressed: onDelete,
+            ),
           ],
         ),
       ),
@@ -193,24 +250,41 @@ class _OutfitCard extends StatelessWidget {
   }
 }
 
-/// 创建搭配对话框
+/// 搭配表单对话框（新建 / 编辑共用）
 ///
-/// 保存时通过 `Navigator.pop` 把新建的 Outfit 交回调用方，
+/// - 不传 [initial] → 新建模式，返回带新 id 的 Outfit
+/// - 传 [initial] → 编辑模式，返回保留原 id / createdAt / wearCount 的 Outfit
+///
+/// 保存时通过 `Navigator.pop` 把 Outfit 交回调用方，
 /// user_id 由 notifier 在落库时填充（这里不写死）。
-class _CreateOutfitDialog extends StatefulWidget {
+class _OutfitFormDialog extends StatefulWidget {
   final List<ClothingItem> allItems;
 
-  const _CreateOutfitDialog({required this.allItems});
+  /// 编辑模式下传入原搭配
+  final Outfit? initial;
+
+  const _OutfitFormDialog({required this.allItems, this.initial});
 
   @override
-  State<_CreateOutfitDialog> createState() => _CreateOutfitDialogState();
+  State<_OutfitFormDialog> createState() => _OutfitFormDialogState();
 }
 
-class _CreateOutfitDialogState extends State<_CreateOutfitDialog> {
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  final _selectedIds = <String>{};
+class _OutfitFormDialogState extends State<_OutfitFormDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _descController;
+  late final Set<String> _selectedIds;
   final _uuid = const Uuid();
+
+  bool get _isEdit => widget.initial != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final init = widget.initial;
+    _nameController = TextEditingController(text: init?.name ?? '');
+    _descController = TextEditingController(text: init?.description ?? '');
+    _selectedIds = {...?init?.itemIds};
+  }
 
   @override
   void dispose() {
@@ -219,21 +293,63 @@ class _CreateOutfitDialogState extends State<_CreateOutfitDialog> {
     super.dispose();
   }
 
+  void _submit() {
+    final name = _nameController.text.trim();
+    final desc = _descController.text.trim();
+    final init = widget.initial;
+
+    if (init == null) {
+      Navigator.of(context).pop(
+        Outfit(
+          id: _uuid.v4(),
+          userId: '', // 落库时由 notifier 用当前登录用户覆盖
+          name: name,
+          description: desc.isEmpty ? null : desc,
+          itemIds: _selectedIds.toList(),
+          createdAt: DateTime.now(),
+        ),
+      );
+    } else {
+      Navigator.of(context).pop(
+        init.copyWith(
+          name: name,
+          description: desc.isEmpty ? null : desc,
+          // 描述清空时要真的置 null（copyWith 传 null 会被当成"没传"）
+          clearDescription: desc.isEmpty,
+          itemIds: _selectedIds.toList(),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('新建搭配'),
+      title: Text(_isEdit ? '编辑搭配' : '新建搭配'),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(controller: _nameController,
-                decoration: const InputDecoration(hintText: '搭配名称', isDense: true)),
+            // onChanged 里 setState 是为了让「保存」按钮的可用状态随输入刷新，
+            // 否则先选衣服后填名称时按钮一直是灰的。
+            TextField(
+              controller: _nameController,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: '搭配名称',
+                isDense: true,
+              ),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _descController,
-                decoration: const InputDecoration(hintText: '描述（可选）', isDense: true)),
+            TextField(
+              controller: _descController,
+              decoration: const InputDecoration(
+                hintText: '描述（可选）',
+                isDense: true,
+              ),
+            ),
             const SizedBox(height: 12),
             Text('选择衣服：', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 4),
@@ -247,20 +363,28 @@ class _CreateOutfitDialogState extends State<_CreateOutfitDialog> {
                   final selected = _selectedIds.contains(item.id);
                   return GestureDetector(
                     onTap: () => setState(() {
-                      selected ? _selectedIds.remove(item.id) : _selectedIds.add(item.id);
+                      selected
+                          ? _selectedIds.remove(item.id)
+                          : _selectedIds.add(item.id);
                     }),
                     child: Container(
-                      width: 56, margin: const EdgeInsets.only(right: 6),
+                      width: 56,
+                      margin: const EdgeInsets.only(right: 6),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: selected ? AppTheme.primaryColor : Colors.grey.shade200,
+                          color: selected
+                              ? AppTheme.primaryColor
+                              : Colors.grey.shade200,
                           width: selected ? 2 : 1,
                         ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(7),
-                        child: ItemImage(imageUrl: item.imageUrl, fit: BoxFit.cover),
+                        child: ItemImage(
+                          imageUrl: item.imageUrl,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   );
@@ -271,19 +395,14 @@ class _CreateOutfitDialogState extends State<_CreateOutfitDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
         ElevatedButton(
-          onPressed: _selectedIds.length >= 2 && _nameController.text.trim().isNotEmpty
-              ? () => Navigator.of(context).pop(Outfit(
-                    id: _uuid.v4(),
-                    userId: '', // 落库时由 notifier 用当前登录用户覆盖
-                    name: _nameController.text.trim(),
-                    description: _descController.text.trim().isNotEmpty
-                        ? _descController.text.trim()
-                        : null,
-                    itemIds: _selectedIds.toList(),
-                    createdAt: DateTime.now(),
-                  ))
+          onPressed:
+              _selectedIds.length >= 2 && _nameController.text.trim().isNotEmpty
+              ? _submit
               : null,
           child: const Text('保存'),
         ),

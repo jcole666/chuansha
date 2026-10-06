@@ -17,9 +17,7 @@ class InMemoryWardrobeRepository implements WardrobeRepository {
   Future<List<ClothingItem>> getItems(String userId) async {
     // 模拟网络延迟
     await Future.delayed(const Duration(milliseconds: 300));
-    return _items.values
-        .where((item) => item.userId == userId)
-        .toList()
+    return _items.values.where((item) => item.userId == userId).toList()
       // 最新添加的排前面
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
@@ -59,7 +57,9 @@ class InMemoryWardrobeRepository implements WardrobeRepository {
 
   @override
   Future<void> updateStatusBatch(
-      List<String> itemIds, ClothingStatus status) async {
+    List<String> itemIds,
+    ClothingStatus status,
+  ) async {
     if (itemIds.isEmpty) return;
     await Future.delayed(const Duration(milliseconds: 300));
     for (final id in itemIds) {

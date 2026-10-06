@@ -306,6 +306,12 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
     state = state.copyWith(isGridView: !state.isGridView);
   }
 
+  /// 指定视图模式（设置页用，需与本地存储保持一致）
+  void setGridView(bool value) {
+    if (state.isGridView == value) return;
+    state = state.copyWith(isGridView: value);
+  }
+
   /// 根据 ID 获取单件衣物
   ClothingItem? getItemById(String id) {
     try {

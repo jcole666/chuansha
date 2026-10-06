@@ -26,6 +26,9 @@ class ItemDetailPage extends ConsumerStatefulWidget {
 }
 
 class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
+  /// 防止「今天穿了」连点重复写入
+  bool _recording = false;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +36,60 @@ class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
     Future.microtask(() {
       ref.read(wearCalendarProvider.notifier).load();
     });
+  }
+
+  /// 今天是否已经记录过这件衣服
+  bool _isWornToday(WearCalendarState calendar, String itemId) {
+    return calendar
+        .recordsFor(DateTime.now())
+        .any((r) => r.itemIds.contains(itemId));
+  }
+
+  /// 记录「今天穿了这件」
+  ///
+  /// 今天已有穿搭记录时**并进去**，避免一天堆出一堆单件记录。
+  Future<void> _recordToday(ClothingItem item) async {
+    if (_recording) return;
+
+    final calendar = ref.read(wearCalendarProvider);
+    final notifier = ref.read(wearCalendarProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    final today = DateTime.now();
+
+    final todays = calendar.recordsFor(today);
+    if (todays.any((r) => r.itemIds.contains(item.id))) {
+      messenger.showSnackBar(SnackBar(content: Text('今天已经记录过「${item.name}」了')));
+      return;
+    }
+
+    setState(() => _recording = true);
+    try {
+      final bool ok;
+      if (todays.isNotEmpty) {
+        // 并进今天已有的第一条记录
+        final target = todays.first;
+        ok = await notifier.updateRecord(
+          target.copyWith(itemIds: [...target.itemIds, item.id]),
+        );
+      } else {
+        ok = await notifier.addRecord(
+          date: today,
+          name: '日常穿搭',
+          itemIds: [item.id],
+        );
+      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(ok ? '已记录：今天穿了「${item.name}」' : '记录失败，请检查网络后重试'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('记录失败：$e')));
+    } finally {
+      if (mounted) setState(() => _recording = false);
+    }
   }
 
   @override
@@ -84,6 +141,31 @@ class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
             SizedBox(
               height: 320,
               child: ItemImage(imageUrl: item.imageUrl, fit: BoxFit.contain),
+            ),
+
+            // 今日穿着快捷记录（此前只能绕到日历页手动勾选）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: _isWornToday(calendarState, item.id)
+                    ? OutlinedButton.icon(
+                        onPressed: null,
+                        icon: const Icon(Icons.check_circle_outline, size: 18),
+                        label: const Text('今天已穿过'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      )
+                    : FilledButton.icon(
+                        onPressed: _recording ? null : () => _recordToday(item),
+                        icon: const Icon(Icons.event_available, size: 18),
+                        label: const Text('今天穿了这件'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+              ),
             ),
 
             // 信息区

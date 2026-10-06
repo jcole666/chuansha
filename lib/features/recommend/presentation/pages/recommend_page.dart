@@ -78,7 +78,8 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
     }
 
     // 衣物不足（冷启动）
-    if (wardrobeState.allItems.length < AppConstants.minItemsForRecommendation) {
+    if (wardrobeState.allItems.length <
+        AppConstants.minItemsForRecommendation) {
       return _buildColdStart(wardrobeState.allItems.length);
     }
 
@@ -94,10 +95,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
         // 推荐标题
         Row(
           children: [
-            Text(
-              '今日推荐',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text('今日推荐', style: Theme.of(context).textTheme.titleLarge),
             const Spacer(),
             // 换一批
             TextButton.icon(
@@ -113,10 +111,13 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
 
         // 推荐列表
         if (state.isLoadingRecommendations)
-          ...List.generate(3, (_) => const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: ShimmerCard(height: 180),
-              ))
+          ...List.generate(
+            3,
+            (_) => const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: ShimmerCard(height: 180),
+            ),
+          )
         else if (state.recommendations.isEmpty)
           const EmptyState(
             icon: Icons.inventory_outlined,
@@ -150,10 +151,13 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
         const SizedBox(height: 20),
         Text('今日推荐', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
-        ...List.generate(3, (_) => const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: ShimmerCard(height: 180),
-            )),
+        ...List.generate(
+          3,
+          (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: ShimmerCard(height: 180),
+          ),
+        ),
       ],
     );
   }
@@ -207,9 +211,9 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                   Text(
                     '已录入 $currentCount / $target',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -224,7 +228,10 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
               icon: const Icon(Icons.add_a_photo),
               label: const Text('去录入'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -347,7 +354,10 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: _getRankColor(index),
                     borderRadius: BorderRadius.circular(6),
@@ -415,9 +425,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
             Row(
               children: [
                 // 搭配风格标签
-                Expanded(
-                  child: _buildOutfitTags(rec),
-                ),
+                Expanded(child: _buildOutfitTags(rec)),
                 // 👍 / 👎
                 if (!alreadyFeedback) ...[
                   IconButton(
@@ -437,9 +445,9 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                 ] else
                   Text(
                     '已反馈',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.grey,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: Colors.grey),
                   ),
               ],
             ),
@@ -450,9 +458,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonalIcon(
-                onPressed: alreadyWornToday
-                    ? null
-                    : () => _recordToday(rec),
+                onPressed: alreadyWornToday ? null : () => _recordToday(rec),
                 icon: Icon(
                   alreadyWornToday
                       ? Icons.check_circle_outline
@@ -481,11 +487,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
     final messenger = ScaffoldMessenger.of(context);
     final ok = await ref
         .read(wearCalendarProvider.notifier)
-        .addRecord(
-          date: DateTime.now(),
-          name: '推荐穿搭',
-          itemIds: rec.itemIds,
-        );
+        .addRecord(date: DateTime.now(), name: '推荐穿搭', itemIds: rec.itemIds);
 
     _recordingKeys.remove(key);
     if (!mounted) return;

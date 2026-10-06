@@ -42,8 +42,10 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       return Scaffold(
         appBar: AppBar(title: const Text('穿着统计')),
         body: Center(
-          child: Text('还没有数据，先录入衣服或记录穿搭吧',
-              style: Theme.of(context).textTheme.bodyMedium),
+          child: Text(
+            '还没有数据，先录入衣服或记录穿搭吧',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ),
       );
     }
@@ -147,9 +149,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
             if (top.isNotEmpty) ...[
               Text(
                 '这个月最常穿',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: Colors.grey,
-                ),
+                style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey),
               ),
               const SizedBox(height: 8),
               ...top.asMap().entries.map((e) {
@@ -162,9 +162,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
             ] else
               Text(
                 '这个月还没有穿过衣服',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey,
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
               ),
           ],
         ),
@@ -224,9 +222,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               '${index + 1}',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleSmall?.copyWith(
-                color: index == 0
-                    ? const Color(0xFFFFB300)
-                    : Colors.grey,
+                color: index == 0 ? const Color(0xFFFFB300) : Colors.grey,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -241,7 +237,11 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                   ? ItemImage(imageUrl: item.imageUrl, fit: BoxFit.cover)
                   : Container(
                       color: Colors.grey.shade200,
-                      child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                      child: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.grey,
+                      ),
                     ),
             ),
           ),
@@ -269,14 +269,15 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     );
   }
 
-
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              )),
+      child: Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+      ),
     );
   }
 
@@ -340,14 +341,24 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       leading: CircleAvatar(
         radius: 16,
         backgroundColor: statColor.withValues(alpha: 0.1),
-        child: Text('${item.wearCount}', style: TextStyle(fontSize: 11, color: statColor)),
+        child: Text(
+          '${item.wearCount}',
+          style: TextStyle(fontSize: 11, color: statColor),
+        ),
       ),
       title: Text(item.name, style: Theme.of(context).textTheme.bodyMedium),
-      subtitle:
-          Text(item.subCategory ?? item.category, style: Theme.of(context).textTheme.labelSmall),
-      trailing: Text(stat,
-          style: TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 13, color: statColor)),
+      subtitle: Text(
+        item.subCategory ?? item.category,
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+      trailing: Text(
+        stat,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+          color: statColor,
+        ),
+      ),
     );
   }
 
@@ -370,9 +381,12 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           child: Row(
             children: [
               SizedBox(
-                  width: 48,
-                  child: Text(e.key,
-                      style: Theme.of(context).textTheme.bodySmall)),
+                width: 48,
+                child: Text(
+                  e.key,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
               Expanded(
                 child: Stack(
                   children: [
@@ -398,10 +412,13 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               ),
               const SizedBox(width: 8),
               SizedBox(
-                  width: 24,
-                  child: Text('${e.value}',
-                      textAlign: TextAlign.right,
-                      style: Theme.of(context).textTheme.bodySmall)),
+                width: 24,
+                child: Text(
+                  '${e.value}',
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             ],
           ),
         );

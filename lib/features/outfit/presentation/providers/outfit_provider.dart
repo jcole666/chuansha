@@ -10,10 +10,7 @@ class OutfitListState {
   final List<Outfit> outfits;
   final bool isLoading;
 
-  const OutfitListState({
-    this.outfits = const [],
-    this.isLoading = false,
-  });
+  const OutfitListState({this.outfits = const [], this.isLoading = false});
 
   OutfitListState copyWith({List<Outfit>? outfits, bool? isLoading}) {
     return OutfitListState(
@@ -123,5 +120,5 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
 /// Outfit Provider
 final outfitListProvider =
     StateNotifierProvider<OutfitListNotifier, OutfitListState>((ref) {
-  return OutfitListNotifier(ref);
-});
+      return OutfitListNotifier(ref);
+    });

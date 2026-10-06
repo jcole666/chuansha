@@ -11,6 +11,9 @@ import '../features/outfit/presentation/pages/outfit_home_page.dart';
 import '../features/calendar/presentation/pages/wear_calendar_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/stats_page.dart';
+import '../features/profile/presentation/pages/settings_page.dart';
+import '../features/profile/presentation/pages/about_page.dart';
+import '../features/profile/presentation/pages/privacy_policy_page.dart';
 import '../features/auth/presentation/pages/onboarding_page.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
@@ -51,16 +54,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 新手引导
       GoRoute(
         path: AppRoutes.onboarding,
-        pageBuilder: (context, state) => const MaterialPage(child: OnboardingPage()),
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: OnboardingPage()),
       ),
 
       // 登录/注册
       GoRoute(
         path: AppRoutes.login,
-        pageBuilder: (context, state) => const MaterialPage(
-          fullscreenDialog: true,
-          child: AuthPage(),
-        ),
+        pageBuilder: (context, state) =>
+            const MaterialPage(fullscreenDialog: true, child: AuthPage()),
       ),
 
       // 底部导航壳（4 Tab）
@@ -74,7 +76,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.wardrobe,
-                pageBuilder: (context, state) => const NoTransitionPage(child: WardrobePage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: WardrobePage()),
               ),
             ],
           ),
@@ -83,7 +86,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.outfits,
-                pageBuilder: (context, state) => const NoTransitionPage(child: OutfitHomePage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: OutfitHomePage()),
               ),
             ],
           ),
@@ -92,7 +96,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.calendar,
-                pageBuilder: (context, state) => const NoTransitionPage(child: WearCalendarPage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: WearCalendarPage()),
               ),
             ],
           ),
@@ -101,7 +106,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.profile,
-                pageBuilder: (context, state) => const NoTransitionPage(child: ProfilePage()),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage(child: ProfilePage()),
               ),
             ],
           ),
@@ -112,8 +118,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.addItem,
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => const MaterialPage(
-          fullscreenDialog: true, child: AddItemPage()),
+        pageBuilder: (context, state) =>
+            const MaterialPage(fullscreenDialog: true, child: AddItemPage()),
       ),
       GoRoute(
         path: '${AppRoutes.itemDetail}/:itemId',
@@ -129,13 +135,32 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) {
           final itemId = state.pathParameters['itemId']!;
           return MaterialPage(
-            fullscreenDialog: true, child: EditItemPage(itemId: itemId));
+            fullscreenDialog: true,
+            child: EditItemPage(itemId: itemId),
+          );
         },
       ),
       GoRoute(
         path: AppRoutes.stats,
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) => const MaterialPage(child: StatsPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: SettingsPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.about,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(child: AboutPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.privacy,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            const MaterialPage(child: PrivacyPolicyPage()),
       ),
     ],
   );

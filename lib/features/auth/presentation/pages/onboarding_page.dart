@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/constants/routes.dart';
+import '../../../profile/presentation/pages/privacy_policy_page.dart';
 
 /// 新手引导页
 ///
@@ -19,6 +20,11 @@ class OnboardingPage extends StatefulWidget {
 class _OnboardingPageState extends State<OnboardingPage> {
   final PageController _controller = PageController();
   int _currentPage = 0;
+
+  /// 是否已同意隐私政策（最后一页要求勾选后才能开始使用）
+  bool _agreed = false;
+
+  bool get _isLastPage => _currentPage == 2;
 
   @override
   void dispose() {
@@ -68,6 +74,44 @@ class _OnboardingPageState extends State<OnboardingPage> {
               ),
             ),
 
+            // 隐私政策同意（仅最后一页）
+            if (_isLastPage)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _agreed,
+                      onChanged: (v) => setState(() => _agreed = v ?? false),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    Expanded(
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          const Text('我已阅读并同意', style: TextStyle(fontSize: 13)),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyPolicyPage(),
+                              ),
+                            ),
+                            child: Text(
+                              '《隐私政策》',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // 底部指示器 + 按钮
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
@@ -90,18 +134,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   }),
                   const Spacer(),
 
-                  // 下一步 / 开始按钮
+                  // 下一步 / 开始按钮（最后一页需先勾选同意隐私政策）
                   FloatingActionButton(
-                    onPressed: () {
-                      if (_currentPage < 2) {
-                        _controller.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      } else {
-                        _finish();
-                      }
-                    },
+                    onPressed: (_isLastPage && !_agreed)
+                        ? null
+                        : () {
+                            if (!_isLastPage) {
+                              _controller.nextPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            } else {
+                              _finish();
+                            }
+                          },
                     backgroundColor: AppTheme.primaryColor,
                     child: Icon(
                       _currentPage < 2 ? Icons.arrow_forward : Icons.check,
@@ -150,20 +196,16 @@ class _OnboardingPageView extends StatelessWidget {
               color: image.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              image.icon,
-              size: 80,
-              color: image.color,
-            ),
+            child: Icon(image.icon, size: 80, color: image.color),
           ),
           const SizedBox(height: 48),
 
           // 标题
           Text(
             title,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -172,9 +214,9 @@ class _OnboardingPageView extends StatelessWidget {
           Text(
             subtitle,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.textSecondary,
-                  height: 1.6,
-                ),
+              color: AppTheme.textSecondary,
+              height: 1.6,
+            ),
             textAlign: TextAlign.center,
           ),
         ],

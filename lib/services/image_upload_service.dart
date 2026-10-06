@@ -20,11 +20,41 @@ class ImageUploadService {
   }) async {
     final ext = file.path.split('.').last.toLowerCase();
     final safeExt = ext.length > 1 && ext.length <= 4 ? ext : 'jpg';
-    final path = 'users/$userId/${DateTime.now().millisecondsSinceEpoch}.$safeExt';
+    final path =
+        'users/$userId/${DateTime.now().millisecondsSinceEpoch}.$safeExt';
 
     await _client.storage.from(_bucket).upload(path, file);
 
     // 获取公开 URL
     return _client.storage.from(_bucket).getPublicUrl(path);
+  }
+
+  /// 从公开 URL 反推 storage 内的对象路径
+  ///
+  /// 形如 `https://xxx.supabase.co/storage/v1/object/public/clothing/users/uid/1.png`
+  /// → `users/uid/1.png`；不是本 bucket 的 URL 返回 null。
+  String? _pathFromPublicUrl(String url) {
+    final marker = '/object/public/$_bucket/';
+    final idx = url.indexOf(marker);
+    if (idx < 0) return null;
+    final path = url.substring(idx + marker.length);
+    // 去掉可能的 query string
+    final q = path.indexOf('?');
+    return q < 0 ? path : path.substring(0, q);
+  }
+
+  /// 删除图片（换图后清理旧文件，避免存储里堆孤儿图）
+  ///
+  /// 失败不抛异常：删不掉旧图不该阻塞用户保存新图。
+  /// 返回是否真的删掉了。
+  Future<bool> deleteItemImage(String imageUrl) async {
+    final path = _pathFromPublicUrl(imageUrl);
+    if (path == null || path.isEmpty) return false;
+    try {
+      await _client.storage.from(_bucket).remove([path]);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }

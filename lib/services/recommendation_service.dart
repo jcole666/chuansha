@@ -39,9 +39,13 @@ class RecommendationResult {
 
   /// 获取该搭配涉及的所有单品
   List<ClothingItem> get items {
-    return [top, bottom, outerwear, shoes, dress]
-        .whereType<ClothingItem>()
-        .toList();
+    return [
+      top,
+      bottom,
+      outerwear,
+      shoes,
+      dress,
+    ].whereType<ClothingItem>().toList();
   }
 
   /// 单品 ID 列表
@@ -115,8 +119,11 @@ class RecommendationService {
 
       // 跳过套装类和不可推荐品类（睡衣/内衣不参与推荐）
       final cat = item.category;
-      if (cat == '睡衣套装' || cat == '内衣' || cat == '西服套装' ||
-          cat == '运动套装' || cat == '配饰') {
+      if (cat == '睡衣套装' ||
+          cat == '内衣' ||
+          cat == '西服套装' ||
+          cat == '运动套装' ||
+          cat == '配饰') {
         continue;
       }
 
@@ -156,7 +163,8 @@ class RecommendationService {
     if (temp > 30) return ['短袖', '背心'].any((s) => sub.contains(s));
     if (temp >= 25) return ['短袖', '衬衫'].any((s) => sub.contains(s));
     if (temp >= 20) return ['短袖', '长袖', '衬衫'].any((s) => sub.contains(s));
-    if (temp >= 15) return ['长袖', '卫衣', '衬衫', '针织衫'].any((s) => sub.contains(s));
+    if (temp >= 15)
+      return ['长袖', '卫衣', '衬衫', '针织衫'].any((s) => sub.contains(s));
     if (temp >= 10) return ['卫衣', '针织衫', '衬衫'].any((s) => sub.contains(s));
     if (temp >= 5) return ['针织衫'].any((s) => sub.contains(s));
     if (temp >= 0) return ['针织衫', '长袖'].any((s) => sub.contains(s));
@@ -165,8 +173,10 @@ class RecommendationService {
 
   bool _isBottomSuitable(String sub, double temp) {
     if (temp > 30) return ['短裤'].any((s) => sub.contains(s));
-    if (temp >= 20) return ['短裤', '牛仔长裤', '休闲长裤', '半裙'].any((s) => sub.contains(s));
-    if (temp >= 10) return ['牛仔长裤', '休闲长裤', '西装长裤', '半裙'].any((s) => sub.contains(s));
+    if (temp >= 20)
+      return ['短裤', '牛仔长裤', '休闲长裤', '半裙'].any((s) => sub.contains(s));
+    if (temp >= 10)
+      return ['牛仔长裤', '休闲长裤', '西装长裤', '半裙'].any((s) => sub.contains(s));
     return ['牛仔长裤', '休闲长裤', '西装长裤'].any((s) => sub.contains(s));
   }
 
@@ -212,8 +222,14 @@ class RecommendationService {
   ) {
     // 混排 + 截断（按上限取前 M 件）
     final tops = _shuffleAndCap(filtered['tops']!, AppConstants.maxTops);
-    final bottoms = _shuffleAndCap(filtered['bottoms']!, AppConstants.maxBottoms);
-    final outerwear = _shuffleAndCap(filtered['outerwear']!, AppConstants.maxOuterwear);
+    final bottoms = _shuffleAndCap(
+      filtered['bottoms']!,
+      AppConstants.maxBottoms,
+    );
+    final outerwear = _shuffleAndCap(
+      filtered['outerwear']!,
+      AppConstants.maxOuterwear,
+    );
     final shoes = _shuffleAndCap(filtered['shoes']!, AppConstants.maxShoes);
     final dresses = _shuffleAndCap(filtered['dresses']!, 10);
 
@@ -223,11 +239,13 @@ class RecommendationService {
     if (dresses.isNotEmpty && shoes.isNotEmpty) {
       for (final dress in dresses) {
         for (final shoe in shoes.take(3)) {
-          candidates.add(RecommendationResult(
-            dress: dress,
-            shoes: shoe,
-            score: 0, // 稍后评分
-          ));
+          candidates.add(
+            RecommendationResult(
+              dress: dress,
+              shoes: shoe,
+              score: 0, // 稍后评分
+            ),
+          );
         }
       }
     }
@@ -238,22 +256,26 @@ class RecommendationService {
         for (final bottom in bottoms) {
           for (final shoe in shoes.take(3)) {
             // 无外套版本
-            candidates.add(RecommendationResult(
-              top: top,
-              bottom: bottom,
-              shoes: shoe,
-              score: 0,
-            ));
+            candidates.add(
+              RecommendationResult(
+                top: top,
+                bottom: bottom,
+                shoes: shoe,
+                score: 0,
+              ),
+            );
 
             // 有外套版本（只取前 3 件外套）
             for (final outer in outerwear.take(3)) {
-              candidates.add(RecommendationResult(
-                top: top,
-                bottom: bottom,
-                outerwear: outer,
-                shoes: shoe,
-                score: 0,
-              ));
+              candidates.add(
+                RecommendationResult(
+                  top: top,
+                  bottom: bottom,
+                  outerwear: outer,
+                  shoes: shoe,
+                  score: 0,
+                ),
+              );
             }
           }
         }
@@ -292,7 +314,10 @@ class RecommendationService {
   // ============================================================
 
   /// 多维度评分（满分 100）
-  RecommendationResult _score(RecommendationResult result, WeatherData weather) {
+  RecommendationResult _score(
+    RecommendationResult result,
+    WeatherData weather,
+  ) {
     double styleScore = 0;
     double colorScore = 0;
     double freshnessScore = 0;
@@ -371,8 +396,13 @@ class RecommendationService {
     // V1 暂不做用户偏好匹配，统一给 5 分基础分
     preferenceScore = 5;
 
-    final total = [styleScore, colorScore, freshnessScore, weatherScore, preferenceScore]
-        .fold(0.0, (a, b) => a + b);
+    final total = [
+      styleScore,
+      colorScore,
+      freshnessScore,
+      weatherScore,
+      preferenceScore,
+    ].fold(0.0, (a, b) => a + b);
 
     return RecommendationResult(
       top: result.top,

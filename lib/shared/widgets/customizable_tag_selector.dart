@@ -26,7 +26,8 @@ class CustomizableTagSelector extends StatefulWidget {
   });
 
   @override
-  State<CustomizableTagSelector> createState() => _CustomizableTagSelectorState();
+  State<CustomizableTagSelector> createState() =>
+      _CustomizableTagSelectorState();
 }
 
 class _CustomizableTagSelectorState extends State<CustomizableTagSelector> {
@@ -45,9 +46,9 @@ class _CustomizableTagSelectorState extends State<CustomizableTagSelector> {
 
     // 去重
     if (widget.allTags.contains(text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('标签「$text」已存在')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('标签「$text」已存在')));
       return;
     }
 
@@ -76,8 +77,9 @@ class _CustomizableTagSelectorState extends State<CustomizableTagSelector> {
                     style: TextStyle(
                       fontSize: 12,
                       color: isSelected ? Colors.white : null,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                   backgroundColor: isSelected
@@ -119,8 +121,10 @@ class _CustomizableTagSelectorState extends State<CustomizableTagSelector> {
                   decoration: const InputDecoration(
                     hintText: '输入新标签名称',
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   onSubmitted: (_) => _addCustomTag(),
                 ),

@@ -26,7 +26,8 @@ class ItemImage extends StatelessWidget {
     this.height,
   });
 
-  bool get _isNetwork => imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+  bool get _isNetwork =>
+      imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
 
   @override
   Widget build(BuildContext context) {

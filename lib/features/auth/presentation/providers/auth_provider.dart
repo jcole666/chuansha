@@ -50,10 +50,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // 否则要等 onAuthStateChange 的初始事件，路由守卫会先停在 unknown。
     final cached = client.auth.currentSession;
     if (cached != null) {
-      state = AuthState(
-        status: AuthStatus.authenticated,
-        user: cached.user,
-      );
+      state = AuthState(status: AuthStatus.authenticated, user: cached.user);
     }
 
     client.auth.onAuthStateChange.listen((data) {
@@ -89,17 +86,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> signUp(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final res = await _requireClient.auth.signUp(
-        email: email.trim(),
-        password: password,
-      ).timeout(const Duration(seconds: 20));
+      final res = await _requireClient.auth
+          .signUp(email: email.trim(), password: password)
+          .timeout(const Duration(seconds: 20));
 
       // 无论 user 是否为 null，都必须复位 isLoading
       state = state.copyWith(
         isLoading: false,
-        errorMessage: res.user != null
-            ? null
-            : '注册成功，请前往邮箱验证后登录',
+        errorMessage: res.user != null ? null : '注册成功，请前往邮箱验证后登录',
       );
     } on AuthException catch (e) {
       state = state.copyWith(
@@ -107,15 +101,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
       );
     } on TimeoutException {
-      state = state.copyWith(
-        errorMessage: '连接超时，请检查网络后重试',
-        isLoading: false,
-      );
+      state = state.copyWith(errorMessage: '连接超时，请检查网络后重试', isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        errorMessage: '注册失败：$e',
-        isLoading: false,
-      );
+      state = state.copyWith(errorMessage: '注册失败：$e', isLoading: false);
     }
   }
 
@@ -123,10 +111,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> signIn(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      await _requireClient.auth.signInWithPassword(
-        email: email.trim(),
-        password: password,
-      ).timeout(const Duration(seconds: 20));
+      await _requireClient.auth
+          .signInWithPassword(email: email.trim(), password: password)
+          .timeout(const Duration(seconds: 20));
       // 成功后 onAuthStateChange 会更新状态，这里确保复位
       state = state.copyWith(isLoading: false);
     } on AuthException catch (e) {
@@ -135,10 +122,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        errorMessage: '登录失败：$e',
-        isLoading: false,
-      );
+      state = state.copyWith(errorMessage: '登录失败：$e', isLoading: false);
+    }
+  }
+
+  /// 发送重置密码邮件
+  ///
+  /// 返回错误文案（成功时返回 null）。
+  /// 之前没有这个入口，用户忘记密码就直接卡死了。
+  Future<String?> sendPasswordReset(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return '请输入邮箱';
+    if (!trimmed.contains('@')) return '邮箱格式不正确';
+
+    final client = clientOrNull;
+    if (client == null) return '服务未初始化，请重启应用';
+
+    try {
+      await client.auth
+          .resetPasswordForEmail(trimmed)
+          .timeout(const Duration(seconds: 20));
+      return null;
+    } on AuthException catch (e) {
+      return _getErrorMessage(e.message);
+    } on TimeoutException {
+      return '连接超时，请检查网络后重试';
+    } catch (e) {
+      return '发送失败：$e';
     }
   }
 
@@ -160,10 +170,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// 错误消息 → 中文提示
   String _getErrorMessage(String raw) {
     final lower = raw.toLowerCase();
-    if (lower.contains('already registered') || lower.contains('already exists')) {
+    if (lower.contains('already registered') ||
+        lower.contains('already exists')) {
       return '该邮箱已被注册';
     }
-    if (lower.contains('invalid login') || lower.contains('invalid credentials')) {
+    if (lower.contains('invalid login') ||
+        lower.contains('invalid credentials')) {
       return '邮箱或密码错误';
     }
     if (lower.contains('email not confirmed')) {
@@ -180,8 +192,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 /// 认证 Provider
-final authProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
 

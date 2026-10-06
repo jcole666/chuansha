@@ -80,8 +80,10 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
             icon: const Icon(Icons.chevron_left),
             onPressed: () {
               setState(() {
-                _currentMonth =
-                    DateTime(_currentMonth.year, _currentMonth.month - 1);
+                _currentMonth = DateTime(
+                  _currentMonth.year,
+                  _currentMonth.month - 1,
+                );
               });
             },
           ),
@@ -89,17 +91,19 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
             child: Text(
               '${_currentMonth.year}年 ${_currentMonth.month}月',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
             onPressed: () {
               setState(() {
-                _currentMonth =
-                    DateTime(_currentMonth.year, _currentMonth.month + 1);
+                _currentMonth = DateTime(
+                  _currentMonth.year,
+                  _currentMonth.month + 1,
+                );
               });
             },
           ),
@@ -137,7 +141,11 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
     final firstDay = DateTime(_currentMonth.year, _currentMonth.month, 1);
     // 周一为一周开始
     final leadingBlanks = firstDay.weekday - 1;
-    final daysInMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+    final daysInMonth = DateTime(
+      _currentMonth.year,
+      _currentMonth.month + 1,
+      0,
+    ).day;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -192,8 +200,8 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                   color: isSelected
                       ? Colors.white
                       : isToday
-                          ? AppTheme.primaryColor
-                          : Colors.grey.shade800,
+                      ? AppTheme.primaryColor
+                      : Colors.grey.shade800,
                   fontWeight: isToday ? FontWeight.w700 : FontWeight.normal,
                 ),
               ),
@@ -241,22 +249,27 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
             children: [
               Text(
                 dateLabel,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(width: 8),
               if (isToday)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '今天',
-                    style: TextStyle(fontSize: 11, color: AppTheme.primaryColor),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.primaryColor,
+                    ),
                   ),
                 ),
               const Spacer(),
@@ -278,9 +291,11 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                   itemBuilder: (_, i) => _WearRecordCard(
                     record: dayRecords[i],
                     items: dayRecords[i].itemIds
-                        .map((id) => wardrobeState.allItems
-                            .where((it) => it.id == id)
-                            .firstOrNull)
+                        .map(
+                          (id) => wardrobeState.allItems
+                              .where((it) => it.id == id)
+                              .firstOrNull,
+                        )
                         .whereType<ClothingItem>()
                         .toList(),
                     onEdit: () => _showPickItemsDialog(selected, dayRecords[i]),
@@ -311,14 +326,17 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.calendar_today_outlined,
-              size: 40, color: Colors.grey.shade300),
+          Icon(
+            Icons.calendar_today_outlined,
+            size: 40,
+            color: Colors.grey.shade300,
+          ),
           const SizedBox(height: 8),
           Text(
             '这一天还没有穿搭记录',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey.shade500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
           ),
         ],
       ),
@@ -331,8 +349,7 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
 
     // 预选状态
     final selectedIds = <String>{...?existing?.itemIds};
-    final nameController =
-        TextEditingController(text: existing?.name ?? '');
+    final nameController = TextEditingController(text: existing?.name ?? '');
 
     showDialog(
       context: context,
@@ -364,11 +381,11 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                       child: GridView.builder(
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                          childAspectRatio: 0.8,
-                        ),
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 0.8,
+                            ),
                         itemCount: allItems.length,
                         itemBuilder: (_, i) {
                           final item = allItems[i];
@@ -395,8 +412,9 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(7),
                                       child: ItemImage(
-                                          imageUrl: item.imageUrl,
-                                          fit: BoxFit.cover),
+                                        imageUrl: item.imageUrl,
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -425,18 +443,21 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                   onPressed: selectedIds.isEmpty
                       ? null
                       : () {
-                          final name =
-                              nameController.text.trim().isEmpty
-                                  ? null
-                                  : nameController.text.trim();
+                          final name = nameController.text.trim().isEmpty
+                              ? null
+                              : nameController.text.trim();
                           if (existing == null) {
-                            ref.read(wearCalendarProvider.notifier).addRecord(
+                            ref
+                                .read(wearCalendarProvider.notifier)
+                                .addRecord(
                                   date: date,
                                   name: name,
                                   itemIds: selectedIds.toList(),
                                 );
                           } else {
-                            ref.read(wearCalendarProvider.notifier).updateRecord(
+                            ref
+                                .read(wearCalendarProvider.notifier)
+                                .updateRecord(
                                   existing.copyWith(
                                     name: name,
                                     itemIds: selectedIds.toList(),
@@ -461,7 +482,9 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除这套穿搭？'),
-        content: Text('将删除 ${record.name ?? record.wearDate.month}月${record.wearDate.day}日 的穿搭记录'),
+        content: Text(
+          '将删除 ${record.name ?? record.wearDate.month}月${record.wearDate.day}日 的穿搭记录',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -511,7 +534,10 @@ class _WearRecordCard extends StatelessWidget {
               children: [
                 if (record.name != null) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
@@ -554,9 +580,9 @@ class _WearRecordCard extends StatelessWidget {
                   ? Center(
                       child: Text(
                         '穿搭里的衣服已删除',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                       ),
                     )
                   : Row(
@@ -567,7 +593,9 @@ class _WearRecordCard extends StatelessWidget {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(6),
                               child: ItemImage(
-                                  imageUrl: item.imageUrl, fit: BoxFit.cover),
+                                imageUrl: item.imageUrl,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         );

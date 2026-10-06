@@ -16,9 +16,7 @@ class ProfilePage extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的'),
-      ),
+      appBar: AppBar(title: const Text('我的')),
       body: ListView(
         children: [
           // 用户概览卡片
@@ -29,7 +27,9 @@ class ProfilePage extends ConsumerWidget {
                 // 头像
                 CircleAvatar(
                   radius: 32,
-                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.1,
+                  ),
                   child: Icon(
                     Icons.person,
                     size: 36,
@@ -85,13 +85,15 @@ class ProfilePage extends ConsumerWidget {
             icon: Icons.settings_outlined,
             title: '设置',
             subtitle: '偏好设置、数据管理',
-            onTap: () {},
+            onTap: () => context.push(AppRoutes.settings),
           ),
           _MenuTile(
             icon: Icons.info_outline,
             title: '关于',
-            subtitle: '版本 1.0.0',
-            onTap: () {},
+            // 版本号不再写死（之前写死 1.0.0，实际已是 1.1.x），
+            // 具体版本在关于页里从安装包读取
+            subtitle: '版本信息、数据说明',
+            onTap: () => context.push(AppRoutes.about),
           ),
         ],
       ),
@@ -123,7 +125,11 @@ class _MenuTile extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 22,
+        ),
       ),
       title: Text(title),
       subtitle: subtitle != null ? Text(subtitle!) : null,

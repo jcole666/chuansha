@@ -9,11 +9,7 @@ class ColorInfo {
   /// 颜色在图片中的占比（0.0-1.0）
   final double ratio;
 
-  const ColorInfo({
-    required this.name,
-    required this.hex,
-    this.ratio = 0.0,
-  });
+  const ColorInfo({required this.name, required this.hex, this.ratio = 0.0});
 
   /// 从 JSON 创建
   factory ColorInfo.fromMap(Map<String, dynamic> map) {
@@ -26,11 +22,7 @@ class ColorInfo {
 
   /// 转为 JSON
   Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'hex': hex,
-      'ratio': ratio,
-    };
+    return {'name': name, 'hex': hex, 'ratio': ratio};
   }
 
   @override

@@ -38,38 +38,48 @@ class CategoryData {
 
   /// 女性专属小标签（男性不显示）
   static const Set<String> femaleOnlySubCategories = {
-    '半裙',        // 下装
-    '吊带裙', '短裙', '长裙', '衬衫裙',  // 连衣裙
-    '内衣',        // 内衣
+    '半裙', // 下装
+    '吊带裙', '短裙', '长裙', '衬衫裙', // 连衣裙
+    '内衣', // 内衣
   };
 
   /// 季节标签（含四季通用）
   static const List<String> seasonTags = ['春', '夏', '秋', '冬', '四季通用'];
 
   /// 场合标签
-  static const List<String> occasionTags = [
-    '通勤', '日常', '约会', '运动', '正式', '居家',
-  ];
+  static const List<String> occasionTags = ['通勤', '日常', '约会', '运动', '正式', '居家'];
 
   /// 风格标签
-  static const List<String> styleTags = [
-    '休闲', '职场', '甜美', '酷感', '复古', '运动',
-  ];
+  static const List<String> styleTags = ['休闲', '职场', '甜美', '酷感', '复古', '运动'];
 
   /// 穿着频率
   static const List<String> wearFrequency = ['常穿', '偶尔穿', '待处理'];
 
   /// 色系（供 ColorData 引用）
   static const List<String> colorFamilies = [
-    '黑色系', '白色系', '灰色系', '红色系', '橙色系',
-    '黄色系', '绿色系', '蓝色系', '紫色系', '粉色系',
-    '棕色系', '米色系', '牛仔蓝', '卡其色系', '彩色',
+    '黑色系',
+    '白色系',
+    '灰色系',
+    '红色系',
+    '橙色系',
+    '黄色系',
+    '绿色系',
+    '蓝色系',
+    '紫色系',
+    '粉色系',
+    '棕色系',
+    '米色系',
+    '牛仔蓝',
+    '卡其色系',
+    '彩色',
   ];
 
   /// 根据性别获取大标签列表
   static List<String> getMainCategoriesForGender({required bool isMale}) {
     if (isMale) {
-      return mainCategories.where((c) => !femaleOnlyCategories.contains(c)).toList();
+      return mainCategories
+          .where((c) => !femaleOnlyCategories.contains(c))
+          .toList();
     }
     return mainCategories;
   }

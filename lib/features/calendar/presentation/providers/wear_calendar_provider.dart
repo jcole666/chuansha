@@ -21,7 +21,10 @@ class WearCountResult {
 ///
 /// add/update/delete 三种变更路径最终都归结为"记录集合变化后重算"，
 /// 所以这里只测这一个函数即可覆盖三条路径。
-WearCountResult computeWearStats(List<WearRecord> records, Set<String> itemIds) {
+WearCountResult computeWearStats(
+  List<WearRecord> records,
+  Set<String> itemIds,
+) {
   final counts = <String, int>{};
   final lastDates = <String, DateTime>{};
   for (final r in records) {
@@ -43,15 +46,9 @@ class WearCalendarState {
   final List<WearRecord> records;
   final bool isLoading;
 
-  const WearCalendarState({
-    this.records = const [],
-    this.isLoading = false,
-  });
+  const WearCalendarState({this.records = const [], this.isLoading = false});
 
-  WearCalendarState copyWith({
-    List<WearRecord>? records,
-    bool? isLoading,
-  }) {
+  WearCalendarState copyWith({List<WearRecord>? records, bool? isLoading}) {
     return WearCalendarState(
       records: records ?? this.records,
       isLoading: isLoading ?? this.isLoading,
@@ -66,16 +63,12 @@ class WearCalendarState {
   /// 某天所有的穿搭记录（一天可多条）
   List<WearRecord> recordsFor(DateTime day) {
     final normalized = DateTime(day.year, day.month, day.day);
-    return records
-        .where((r) => _sameDay(r.wearDate, normalized))
-        .toList();
+    return records.where((r) => _sameDay(r.wearDate, normalized)).toList();
   }
 
   /// 某件衣物被穿过的所有记录（按日期倒序）
   List<WearRecord> recordsForItem(String itemId) {
-    return records
-        .where((r) => r.itemIds.contains(itemId))
-        .toList()
+    return records.where((r) => r.itemIds.contains(itemId)).toList()
       ..sort((a, b) => b.wearDate.compareTo(a.wearDate));
   }
 
@@ -83,8 +76,9 @@ class WearCalendarState {
   int get wearDaysThisMonth {
     final now = DateTime.now();
     return records
-        .where((r) =>
-            r.wearDate.year == now.year && r.wearDate.month == now.month)
+        .where(
+          (r) => r.wearDate.year == now.year && r.wearDate.month == now.month,
+        )
         .map((r) => DateTime(r.wearDate.year, r.wearDate.month, r.wearDate.day))
         .toSet()
         .length;
@@ -94,8 +88,9 @@ class WearCalendarState {
   int get outfitsThisMonth {
     final now = DateTime.now();
     return records
-        .where((r) =>
-            r.wearDate.year == now.year && r.wearDate.month == now.month)
+        .where(
+          (r) => r.wearDate.year == now.year && r.wearDate.month == now.month,
+        )
         .length;
   }
 
@@ -104,7 +99,8 @@ class WearCalendarState {
     final now = DateTime.now();
     final counts = <String, int>{};
     for (final r in records) {
-      if (r.wearDate.year != now.year || r.wearDate.month != now.month) continue;
+      if (r.wearDate.year != now.year || r.wearDate.month != now.month)
+        continue;
       for (final id in r.itemIds) {
         counts[id] = (counts[id] ?? 0) + 1;
       }
@@ -188,10 +184,7 @@ class WearCalendarNotifier extends StateNotifier<WearCalendarState> {
   Future<bool> updateRecord(WearRecord updated) async {
     // 受影响衣物 = 变更前后 itemIds 的并集
     final old = state.records.where((r) => r.id == updated.id).firstOrNull;
-    final affected = <String>{
-      ...?old?.itemIds,
-      ...updated.itemIds,
-    };
+    final affected = <String>{...?old?.itemIds, ...updated.itemIds};
 
     try {
       final data = updated.toJson()..remove('id');
@@ -244,11 +237,14 @@ class WearCalendarNotifier extends StateNotifier<WearCalendarState> {
       for (final id in itemIds) {
         final count = result.counts[id] ?? 0;
         final last = result.lastDates[id];
-        await _client.from('clothing_items').update({
-          'wear_count': count,
-          if (last != null) 'last_worn_date': last.toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', id);
+        await _client
+            .from('clothing_items')
+            .update({
+              'wear_count': count,
+              if (last != null) 'last_worn_date': last.toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', id);
       }
 
       // 刷新衣橱内存数据，让其它 Tab 读到最新计数
@@ -262,5 +258,5 @@ class WearCalendarNotifier extends StateNotifier<WearCalendarState> {
 /// 穿搭日历 Provider
 final wearCalendarProvider =
     StateNotifierProvider<WearCalendarNotifier, WearCalendarState>((ref) {
-  return WearCalendarNotifier(ref);
-});
+      return WearCalendarNotifier(ref);
+    });

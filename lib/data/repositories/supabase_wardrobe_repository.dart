@@ -65,10 +65,7 @@ class SupabaseWardrobeRepository implements WardrobeRepository {
   Future<ClothingItem> updateItem(ClothingItem item) async {
     final updated = item.copyWith(updatedAt: DateTime.now());
     final data = updated.toJson()..remove('id');
-    await _client
-        .from('clothing_items')
-        .update(data)
-        .eq('id', item.id);
+    await _client.from('clothing_items').update(data).eq('id', item.id);
     return updated;
   }
 
@@ -90,7 +87,9 @@ class SupabaseWardrobeRepository implements WardrobeRepository {
 
   @override
   Future<void> updateStatusBatch(
-      List<String> itemIds, ClothingStatus status) async {
+    List<String> itemIds,
+    ClothingStatus status,
+  ) async {
     if (itemIds.isEmpty) return;
     await _client
         .from('clothing_items')

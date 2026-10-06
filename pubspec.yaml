@@ -16,18 +16,15 @@ dependencies:
 
   # 状态管理
   flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
 
   # 路由
   go_router: ^17.3.0
 
   # 网络
-  dio: ^5.11.0
   http: ^1.2.2
 
   # 图片
   image_picker: ^1.2.3
-  flutter_image_compress: ^2.5.1
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.2
 
@@ -38,22 +35,18 @@ dependencies:
   # 工具
   intl: ^0.20.3
   uuid: ^4.6.0
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.9.0
   image: ^4.8.0
+
+  # 本地持久化（引导页标记、视图偏好等）
+  shared_preferences: ^2.5.5
+
+  # 读取真实版本号（「关于」页用，别再写死）
+  package_info_plus: ^10.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-
-  # 代码生成
-  build_runner: ^2.4.14
-  freezed: ^2.5.8
-  json_serializable: ^6.9.4
-
-  # 测试
-  mocktail: ^1.0.4
 
 flutter:
   uses-material-design: true

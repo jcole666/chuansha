@@ -8,10 +8,7 @@ class LoadingOverlay extends StatelessWidget {
   /// 加载文案
   final String message;
 
-  const LoadingOverlay({
-    super.key,
-    this.message = '正在处理...',
-  });
+  const LoadingOverlay({super.key, this.message = '正在处理...'});
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +34,7 @@ class LoadingOverlay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                Text(message, style: Theme.of(context).textTheme.bodyLarge),
               ],
             ),
           ),

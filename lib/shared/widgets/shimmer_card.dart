@@ -8,18 +8,14 @@ class ShimmerCard extends StatefulWidget {
   final double? width;
   final EdgeInsetsGeometry? margin;
 
-  const ShimmerCard({
-    super.key,
-    this.height = 200,
-    this.width,
-    this.margin,
-  });
+  const ShimmerCard({super.key, this.height = 200, this.width, this.margin});
 
   @override
   State<ShimmerCard> createState() => _ShimmerCardState();
 }
 
-class _ShimmerCardState extends State<ShimmerCard> with SingleTickerProviderStateMixin {
+class _ShimmerCardState extends State<ShimmerCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -47,7 +43,8 @@ class _ShimmerCardState extends State<ShimmerCard> with SingleTickerProviderStat
         return Container(
           height: widget.height,
           width: widget.width,
-          margin: widget.margin ??
+          margin:
+              widget.margin ??
               const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
             color: Colors.grey.withValues(alpha: _animation.value),
@@ -64,11 +61,7 @@ class ShimmerGrid extends StatelessWidget {
   final int count;
   final int crossAxisCount;
 
-  const ShimmerGrid({
-    super.key,
-    this.count = 6,
-    this.crossAxisCount = 3,
-  });
+  const ShimmerGrid({super.key, this.count = 6, this.crossAxisCount = 3});
 
   @override
   Widget build(BuildContext context) {
@@ -82,10 +75,8 @@ class ShimmerGrid extends StatelessWidget {
         childAspectRatio: 0.75,
       ),
       itemCount: count,
-      itemBuilder: (_, _) => const ShimmerCard(
-        height: double.infinity,
-        margin: EdgeInsets.zero,
-      ),
+      itemBuilder: (_, _) =>
+          const ShimmerCard(height: double.infinity, margin: EdgeInsets.zero),
     );
   }
 }

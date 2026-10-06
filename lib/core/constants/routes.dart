@@ -8,9 +8,6 @@ class AppRoutes {
   /// 衣橱页
   static const String wardrobe = '/wardrobe';
 
-  /// 推荐页（已并入搭配页，保留路径兼容）
-  static const String recommend = '/recommend';
-
   /// 穿搭日历页
   static const String calendar = '/calendar';
 
@@ -19,9 +16,6 @@ class AppRoutes {
 
   /// 登录页
   static const String login = '/auth/login';
-
-  /// 注册页
-  static const String register = '/auth/register';
 
   /// 衣物详情页
   static const String itemDetail = '/wardrobe/detail';
@@ -34,6 +28,12 @@ class AppRoutes {
 
   /// 设置页
   static const String settings = '/profile/settings';
+
+  /// 关于页
+  static const String about = '/profile/about';
+
+  /// 隐私政策
+  static const String privacy = '/profile/privacy';
 
   /// Outfit 搭配列表
   static const String outfits = '/outfits';

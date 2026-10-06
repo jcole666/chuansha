@@ -81,13 +81,39 @@ class UserGenderNotifier extends StateNotifier<UserGender> {
   void setLocal(UserGender gender) {
     state = gender;
   }
+
+  /// 修改性别并落库（设置页用）
+  ///
+  /// 返回是否成功。本地状态立即更新，落库失败时回滚并返回 false，
+  /// 避免界面显示改了、实际没存上。
+  Future<bool> save(UserGender gender) async {
+    final userId = _ref.read(currentUserIdProvider);
+    if (userId == null || userId.isEmpty) return false;
+
+    final client = _supabase;
+    if (client == null) return false;
+
+    final previous = state;
+    state = gender; // 先本地生效，界面即时反馈
+    try {
+      await client.from('users').upsert({
+        'id': userId,
+        'gender': gender == UserGender.male ? 'male' : 'female',
+      });
+      _loadedFor = userId; // 标记已同步，避免被回读覆盖
+      return true;
+    } catch (_) {
+      state = previous; // 失败回滚
+      return false;
+    }
+  }
 }
 
 /// 用户性别 Provider（全局）
 final userGenderProvider =
     StateNotifierProvider<UserGenderNotifier, UserGender>((ref) {
-  return UserGenderNotifier(ref);
-});
+      return UserGenderNotifier(ref);
+    });
 
 /// 是否男性 —— 统一判定口径
 ///

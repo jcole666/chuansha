@@ -4,11 +4,7 @@ class AppException implements Exception {
   final String? code;
   final dynamic originalError;
 
-  const AppException({
-    required this.message,
-    this.code,
-    this.originalError,
-  });
+  const AppException({required this.message, this.code, this.originalError});
 
   @override
   String toString() => 'AppException: $message (code: $code)';
