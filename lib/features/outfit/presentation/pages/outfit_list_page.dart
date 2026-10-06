@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../shared/widgets/item_image.dart';
+import '../../../../../shared/widgets/offline_banner.dart';
 import '../../../../../data/models/outfit.dart';
 import '../../../../../data/models/clothing_item.dart';
 import '../../../wardrobe/presentation/providers/wardrobe_provider.dart';
@@ -43,28 +44,39 @@ class _OutfitListPageState extends ConsumerState<OutfitListPage> {
       appBar: widget.showAppBar ? AppBar(title: const Text('搭配组合')) : null,
       body: state.outfits.isEmpty
           ? _buildEmpty(context, ref)
-          : RefreshIndicator(
-              onRefresh: () => notifier.load(),
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                itemCount: state.outfits.length,
-                itemBuilder: (_, index) {
-                  final outfit = state.outfits[index];
-                  return _OutfitCard(
-                    outfit: outfit,
-                    items: state.getItemsForOutfit(
-                      outfit,
-                      wardrobeState.allItems,
-                    ),
-                    onEdit: () => _showEditDialog(outfit),
-                    onDelete: () => _confirmDelete(outfit),
-                  );
-                },
-              ),
+          : Column(
+              children: [
+                if (state.isOffline)
+                  OfflineBanner(onRetry: () => notifier.load()),
+                Expanded(child: _buildList(state, wardrobeState, notifier)),
+              ],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateDialog(context, ref),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildList(
+    OutfitListState state,
+    WardrobeListState wardrobeState,
+    OutfitListNotifier notifier,
+  ) {
+    return RefreshIndicator(
+      onRefresh: () => notifier.load(),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+        itemCount: state.outfits.length,
+        itemBuilder: (_, index) {
+          final outfit = state.outfits[index];
+          return _OutfitCard(
+            outfit: outfit,
+            items: state.getItemsForOutfit(outfit, wardrobeState.allItems),
+            onEdit: () => _showEditDialog(outfit),
+            onDelete: () => _confirmDelete(outfit),
+          );
+        },
       ),
     );
   }

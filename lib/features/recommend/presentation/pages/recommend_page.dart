@@ -429,14 +429,14 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                 // 👍 / 👎
                 if (!alreadyFeedback) ...[
                   IconButton(
-                    onPressed: () => notifier.like(rec),
+                    onPressed: () => _sendFeedback(notifier, rec, liked: true),
                     icon: const Icon(Icons.thumb_up_outlined, size: 20),
                     tooltip: '喜欢',
                     color: Colors.grey,
                     visualDensity: VisualDensity.compact,
                   ),
                   IconButton(
-                    onPressed: () => notifier.dislike(rec),
+                    onPressed: () => _sendFeedback(notifier, rec, liked: false),
                     icon: const Icon(Icons.thumb_down_outlined, size: 20),
                     tooltip: '不喜欢',
                     color: Colors.grey,
@@ -471,8 +471,101 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                 ),
               ),
             ),
+
+            // 推荐理由（scoreDetails 一直算着，只是从来没展示过）
+            if (rec.scoreDetails.isNotEmpty) _buildReasonPanel(context, rec),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 发送 👍/👎 反馈
+  ///
+  /// 落库成功才算数 —— 失败时如实提示，不再"点了赞其实没存上"。
+  Future<void> _sendFeedback(
+    RecommendNotifier notifier,
+    RecommendationResult rec, {
+    required bool liked,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await (liked ? notifier.like(rec) : notifier.dislike(rec));
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? (liked ? '已记下，之后会多推荐这类搭配' : '已记下，之后会少推荐这类搭配')
+              : '反馈保存失败，请检查网络后重试',
+        ),
+      ),
+    );
+  }
+
+  /// 推荐理由面板：把各维度得分翻译成人能看懂的形式
+  Widget _buildReasonPanel(BuildContext context, RecommendationResult rec) {
+    // 各维度满分（与 recommendation_service 的打分口径一致）
+    const maxScores = <String, double>{
+      '风格协调': 30,
+      '颜色搭配': 25,
+      '新鲜度': 20,
+      '天气匹配': 15,
+      '偏好': 10,
+    };
+
+    final theme = Theme.of(context);
+
+    return Theme(
+      data: theme.copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 8),
+        dense: true,
+        title: Text(
+          '为什么推荐这套',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        children: rec.scoreDetails.entries.map((e) {
+          final max = maxScores[e.key] ?? 10;
+          final ratio = (e.value / max).clamp(0.0, 1.0);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 60,
+                  child: Text(e.key, style: theme.textTheme.labelSmall),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: ratio,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation(
+                        AppTheme.primaryColor.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 44,
+                  child: Text(
+                    '${e.value.toStringAsFixed(0)}/${max.toStringAsFixed(0)}',
+                    textAlign: TextAlign.right,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }

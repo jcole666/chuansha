@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/local_store.dart';
 import '../../../../data/models/outfit.dart';
 import '../../../../data/models/clothing_item.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -10,12 +13,24 @@ class OutfitListState {
   final List<Outfit> outfits;
   final bool isLoading;
 
-  const OutfitListState({this.outfits = const [], this.isLoading = false});
+  /// 当前展示的是本地缓存（网络请求失败后回退）
+  final bool isOffline;
 
-  OutfitListState copyWith({List<Outfit>? outfits, bool? isLoading}) {
+  const OutfitListState({
+    this.outfits = const [],
+    this.isLoading = false,
+    this.isOffline = false,
+  });
+
+  OutfitListState copyWith({
+    List<Outfit>? outfits,
+    bool? isLoading,
+    bool? isOffline,
+  }) {
     return OutfitListState(
       outfits: outfits ?? this.outfits,
       isLoading: isLoading ?? this.isLoading,
+      isOffline: isOffline ?? this.isOffline,
     );
   }
 
@@ -43,11 +58,15 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
   String? get _userId => _ref.read(currentUserIdProvider);
 
   /// 加载所有搭配
+  ///
+  /// 与衣橱列表一致：成功写缓存，失败回退缓存并标记离线。
   Future<void> load() async {
     final userId = _userId;
     if (userId == null) return;
 
     state = state.copyWith(isLoading: true);
+    final cacheKey = CacheKeys.outfits(userId);
+
     try {
       final res = await _client
           .from('outfits')
@@ -57,9 +76,33 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
       final outfits = (res as List)
           .map((row) => Outfit.fromJson(row as Map<String, dynamic>))
           .toList();
-      state = OutfitListState(outfits: outfits, isLoading: false);
+      state = OutfitListState(
+        outfits: outfits,
+        isLoading: false,
+        isOffline: false,
+      );
+      await LocalStore.writeCache(
+        cacheKey,
+        jsonEncode(outfits.map((e) => e.toJson()).toList()),
+      );
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      final cached = LocalStore.readCache(cacheKey);
+      if (cached != null) {
+        try {
+          final outfits = (jsonDecode(cached) as List)
+              .map((row) => Outfit.fromJson(row as Map<String, dynamic>))
+              .toList();
+          state = OutfitListState(
+            outfits: outfits,
+            isLoading: false,
+            isOffline: true,
+          );
+          return;
+        } catch (_) {
+          // 缓存坏了，走下面的降级分支
+        }
+      }
+      state = state.copyWith(isLoading: false, isOffline: true);
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/constants/routes.dart';
+import '../../../../../core/local_store.dart';
 import '../../../profile/presentation/pages/privacy_policy_page.dart';
 
 /// 新手引导页
@@ -163,7 +164,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  void _finish() {
+  Future<void> _finish() async {
+    // 记下「已看过」，下次冷启动不再走引导页
+    await LocalStore.setOnboardingSeen();
+    if (!mounted) return;
     // 引导结束 → 进入登录页
     context.go(AppRoutes.login);
   }

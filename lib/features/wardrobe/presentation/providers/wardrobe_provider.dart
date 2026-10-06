@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/local_store.dart';
 import '../../../../../data/models/clothing_item.dart';
 import '../../../../../data/repositories/supabase_wardrobe_repository.dart';
 import '../../../../../data/repositories/wardrobe_repository.dart';
@@ -43,6 +46,9 @@ class WardrobeListState {
   final bool isLoading;
   final String? errorMessage;
 
+  /// 当前展示的是本地缓存（网络请求失败后回退）
+  final bool isOffline;
+
   /// 筛选条件
   final String? selectedCategory;
   final String? selectedColor;
@@ -61,6 +67,7 @@ class WardrobeListState {
     this.allItems = const [],
     this.isLoading = false,
     this.errorMessage,
+    this.isOffline = false,
     this.selectedCategory,
     this.selectedColor,
     this.selectedStyle,
@@ -127,6 +134,7 @@ class WardrobeListState {
     List<ClothingItem>? allItems,
     bool? isLoading,
     String? errorMessage,
+    bool? isOffline,
     String? selectedCategory,
     String? selectedColor,
     String? selectedStyle,
@@ -138,6 +146,7 @@ class WardrobeListState {
       allItems: allItems ?? this.allItems,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
+      isOffline: isOffline ?? this.isOffline,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       selectedColor: selectedColor ?? this.selectedColor,
       selectedStyle: selectedStyle ?? this.selectedStyle,
@@ -154,22 +163,58 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
   final Ref _ref;
 
   WardrobeListNotifier(this._repository, this._ref)
-    : super(const WardrobeListState());
+    // 视图模式从本地读，避免每次冷启动都被重置成网格
+    : super(WardrobeListState(isGridView: LocalStore.gridViewSync));
 
   /// 当前用户 ID（未登录时为 null）
   String? get _userId => _ref.read(currentUserIdProvider);
 
   /// 加载衣物列表
+  ///
+  /// 成功时写一份本地缓存；失败时回退到缓存并标记 [WardrobeListState.isOffline]，
+  /// 这样断网也能看到上次的数据，而不是白屏。
   Future<void> loadItems() async {
     final userId = _userId;
     if (userId == null) return;
 
     state = state.copyWith(isLoading: true, errorMessage: null);
+    final cacheKey = CacheKeys.clothingItems(userId);
+
     try {
       final items = await _repository.getItems(userId);
-      state = state.copyWith(allItems: items, isLoading: false);
+      state = state.copyWith(
+        allItems: items,
+        isLoading: false,
+        isOffline: false,
+      );
+      // 缓存写入失败不影响主流程
+      await LocalStore.writeCache(
+        cacheKey,
+        jsonEncode(items.map((e) => e.toJson()).toList()),
+      );
     } catch (e) {
-      state = state.copyWith(errorMessage: '加载失败：$e', isLoading: false);
+      final cached = LocalStore.readCache(cacheKey);
+      if (cached != null) {
+        try {
+          final items = (jsonDecode(cached) as List)
+              .map((row) => ClothingItem.fromJson(row as Map<String, dynamic>))
+              .toList();
+          state = state.copyWith(
+            allItems: items,
+            isLoading: false,
+            isOffline: true,
+            errorMessage: null,
+          );
+          return;
+        } catch (_) {
+          // 缓存坏了，走下面的错误分支
+        }
+      }
+      state = state.copyWith(
+        errorMessage: '加载失败：$e',
+        isLoading: false,
+        isOffline: true,
+      );
     }
   }
 

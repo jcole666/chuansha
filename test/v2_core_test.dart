@@ -7,8 +7,11 @@ import 'package:chuansha/domain/enums/clothing_status.dart';
 import 'package:chuansha/data/repositories/memory_wardrobe_repository.dart';
 import 'package:chuansha/features/calendar/presentation/providers/wear_calendar_provider.dart';
 
-ClothingItem _item(String id,
-    {ClothingStatus status = ClothingStatus.clean, String? userId}) {
+ClothingItem _item(
+  String id, {
+  ClothingStatus status = ClothingStatus.clean,
+  String? userId,
+}) {
   return ClothingItem(
     id: id,
     userId: userId ?? 'test_user',
@@ -132,11 +135,13 @@ void main() {
 
   group('WearCalendarState.recordsForItem', () {
     test('过滤某衣物的记录并按日期倒序', () {
-      final state = WearCalendarState(records: [
-        _record(id: 'r1', date: DateTime(2026, 8, 1), itemIds: ['A', 'B']),
-        _record(id: 'r2', date: DateTime(2026, 8, 3), itemIds: ['A']),
-        _record(id: 'r3', date: DateTime(2026, 8, 2), itemIds: ['C']),
-      ]);
+      final state = WearCalendarState(
+        records: [
+          _record(id: 'r1', date: DateTime(2026, 8, 1), itemIds: ['A', 'B']),
+          _record(id: 'r2', date: DateTime(2026, 8, 3), itemIds: ['A']),
+          _record(id: 'r3', date: DateTime(2026, 8, 2), itemIds: ['C']),
+        ],
+      );
 
       final forA = state.recordsForItem('A');
       expect(forA.length, 2);
@@ -148,11 +153,25 @@ void main() {
   group('WearCalendarState 月度统计', () {
     test('wearDaysThisMonth 按日期去重', () {
       final now = DateTime.now();
-      final state = WearCalendarState(records: [
-        _record(id: 'r1', date: DateTime(now.year, now.month, 1), itemIds: ['A']),
-        _record(id: 'r2', date: DateTime(now.year, now.month, 1), itemIds: ['B']),
-        _record(id: 'r3', date: DateTime(now.year, now.month, 2), itemIds: ['C']),
-      ]);
+      final state = WearCalendarState(
+        records: [
+          _record(
+            id: 'r1',
+            date: DateTime(now.year, now.month, 1),
+            itemIds: ['A'],
+          ),
+          _record(
+            id: 'r2',
+            date: DateTime(now.year, now.month, 1),
+            itemIds: ['B'],
+          ),
+          _record(
+            id: 'r3',
+            date: DateTime(now.year, now.month, 2),
+            itemIds: ['C'],
+          ),
+        ],
+      );
 
       // 同一天两条只算 1 天
       expect(state.wearDaysThisMonth, 2);
@@ -161,11 +180,25 @@ void main() {
 
     test('mostWornItemsThisMonth 排序并限 Top N', () {
       final now = DateTime.now();
-      final state = WearCalendarState(records: [
-        _record(id: 'r1', date: DateTime(now.year, now.month, 1), itemIds: ['A', 'B']),
-        _record(id: 'r2', date: DateTime(now.year, now.month, 2), itemIds: ['A']),
-        _record(id: 'r3', date: DateTime(now.year, now.month, 3), itemIds: ['C', 'C', 'C']),
-      ]);
+      final state = WearCalendarState(
+        records: [
+          _record(
+            id: 'r1',
+            date: DateTime(now.year, now.month, 1),
+            itemIds: ['A', 'B'],
+          ),
+          _record(
+            id: 'r2',
+            date: DateTime(now.year, now.month, 2),
+            itemIds: ['A'],
+          ),
+          _record(
+            id: 'r3',
+            date: DateTime(now.year, now.month, 3),
+            itemIds: ['C', 'C', 'C'],
+          ),
+        ],
+      );
 
       final top = state.mostWornItemsThisMonth(limit: 2);
       // C 出现 3 次最多，A 出现 2 次其次

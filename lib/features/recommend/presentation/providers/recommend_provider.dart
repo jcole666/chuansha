@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/models/weather_data.dart';
 import '../../../../data/models/clothing_item.dart';
+import '../../../../data/models/preference_feedback.dart';
 import '../../../../services/weather_service.dart';
 import '../../../../services/recommendation_service.dart';
 import '../../../../data/repositories/wardrobe_repository.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../wardrobe/presentation/providers/wardrobe_provider.dart';
+import 'preference_provider.dart';
 
 /// 推荐页状态
 class RecommendState {
@@ -78,10 +80,11 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
       weatherError: null,
     );
 
-    // 并行：加载天气 + 衣物
+    // 并行：加载天气 + 衣物 + 偏好反馈
     final results = await Future.wait([
       _loadWeather(),
       _repository.getItems(userId),
+      _ref.read(preferenceProvider.notifier).load(),
     ]);
 
     final weather = results[0] as WeatherData?;
@@ -92,6 +95,7 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
         final recs = _recommendationService.recommend(
           items: items,
           weather: weather,
+          preference: _buildProfile(items),
         );
         state = state.copyWith(
           recommendations: recs,
@@ -145,6 +149,7 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
       final recs = _recommendationService.recommend(
         items: items,
         weather: state.weather!,
+        preference: _buildProfile(items),
       );
       state = state.copyWith(
         recommendations: recs,
@@ -155,17 +160,34 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
     }
   }
 
-  /// 喜欢 👍
-  void like(RecommendationResult rec) {
-    final ids = rec.itemIds;
-    // TODO: V2 - 将喜欢记录存储到 Supabase preference_feedback
-    state = state.copyWith(feedbackItemIds: [...state.feedbackItemIds, ids]);
+  /// 从当前反馈记录构建偏好画像
+  PreferenceProfile _buildProfile(List<ClothingItem> items) {
+    return PreferenceProfile.from(
+      feedbacks: _ref.read(preferenceProvider),
+      items: items,
+    );
   }
 
+  /// 喜欢 👍 —— 落库成功后才更新本地状态
+  Future<bool> like(RecommendationResult rec) => _record(rec, liked: true);
+
   /// 不喜欢 👎
-  void dislike(RecommendationResult rec) {
-    final ids = rec.itemIds;
-    state = state.copyWith(feedbackItemIds: [...state.feedbackItemIds, ids]);
+  Future<bool> dislike(RecommendationResult rec) => _record(rec, liked: false);
+
+  /// 记录反馈
+  ///
+  /// 之前只改内存（`// TODO: V2`），退出应用就没了。
+  /// 现在写库，失败返回 false 让页面如实提示。
+  Future<bool> _record(RecommendationResult rec, {required bool liked}) async {
+    final ok = await _ref
+        .read(preferenceProvider.notifier)
+        .record(itemIds: rec.itemIds, liked: liked);
+    if (ok) {
+      state = state.copyWith(
+        feedbackItemIds: [...state.feedbackItemIds, rec.itemIds],
+      );
+    }
+    return ok;
   }
 
   /// 该推荐是否已反馈

@@ -139,6 +139,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await DefaultCacheManager().emptyCache();
+      // 一并清掉离线数据缓存（偏好设置保留）
+      await LocalStore.clearCache();
       messenger.showSnackBar(const SnackBar(content: Text('图片缓存已清除')));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('清除失败：$e')));

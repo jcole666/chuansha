@@ -8,6 +8,7 @@ import '../../../../../shared/widgets/empty_state.dart';
 import '../../../../../shared/widgets/error_view.dart';
 import '../../../../../shared/widgets/shimmer_card.dart';
 import '../../../../../shared/widgets/item_image.dart';
+import '../../../../../shared/widgets/offline_banner.dart';
 import '../../../../../shared/widgets/clothing_status_badge.dart';
 import '../../../../../data/models/clothing_item.dart';
 import '../../../../../domain/enums/clothing_status.dart';
@@ -67,6 +68,9 @@ class _WardrobePageState extends ConsumerState<WardrobePage> {
         appBar: _buildAppBar(state, notifier),
         body: Column(
           children: [
+            // 离线提示：数据来自本地缓存时明确告知
+            if (state.isOffline && state.allItems.isNotEmpty)
+              OfflineBanner(onRetry: () => notifier.loadItems()),
             // 多选模式下隐藏：搜索栏、筛选栏、排序栏
             if (!_isSelectionMode) ...[
               if (_showSearch) _buildSearchBar(notifier),

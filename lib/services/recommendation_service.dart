@@ -2,6 +2,7 @@ import 'dart:math';
 import '../core/constants/app_constants.dart';
 import '../core/utils/color_utils.dart';
 import '../data/models/clothing_item.dart';
+import '../data/models/preference_feedback.dart';
 import '../data/models/weather_data.dart';
 
 /// 推荐结果
@@ -64,13 +65,13 @@ class RecommendationService {
   /// [items] 用户所有可用衣物
   /// [weather] 当前天气
   /// [recentItemIds] 最近 7 天穿过的单品 ID（避免重复）
-  /// [dislikedCombinations] 已 dislike 的组合模式（V2 启用）
+  /// [preference] 用户偏好画像（来自 👍/👎 反馈；为空时退化为通用规则）
   /// [count] 返回数量
   List<RecommendationResult> recommend({
     required List<ClothingItem> items,
     required WeatherData weather,
     List<String> recentItemIds = const [],
-    List<List<String>> dislikedCombinations = const [],
+    PreferenceProfile preference = PreferenceProfile.empty,
     int count = 3,
   }) {
     if (items.length < AppConstants.minItemsForRecommendation) {
@@ -92,10 +93,10 @@ class RecommendationService {
     // 如果过滤后某类太少，回退（不剔除最近穿过）
     if (_anyCategoryInsufficient(filtered)) {
       final fallback = _filterByWeather(items, weather);
-      return _generateRecommendations(fallback, weather, count);
+      return _generateRecommendations(fallback, weather, preference, count);
     }
 
-    return _generateRecommendations(filtered, weather, count);
+    return _generateRecommendations(filtered, weather, preference, count);
   }
 
   /// 阶段一：按温度范围筛选类别
@@ -218,6 +219,7 @@ class RecommendationService {
   List<RecommendationResult> _generateRecommendations(
     Map<String, List<ClothingItem>> filtered,
     WeatherData weather,
+    PreferenceProfile preference,
     int count,
   ) {
     // 混排 + 截断（按上限取前 M 件）
@@ -284,11 +286,20 @@ class RecommendationService {
 
     // ============ 阶段三：评分排序 ============
     for (int i = 0; i < candidates.length; i++) {
-      candidates[i] = _score(candidates[i], weather);
+      candidates[i] = _score(candidates[i], weather, preference);
     }
 
     // 按分数降序排序
     candidates.sort((a, b) => b.score.compareTo(a.score));
+
+    // 用户明确 👎 过的同款组合直接剔除（此前该参数从未被使用）。
+    // 例外：全被 👎 掉时保留原样 —— 宁可重复出现，也好过给用户一个空页面。
+    final kept = _removeDisliked(candidates, preference.dislikedCombos);
+    if (kept.isNotEmpty) {
+      candidates
+        ..clear()
+        ..addAll(kept);
+    }
 
     // 取 Top N（加入少许随机性：前 5 名随机抽 count 个）
     final topPool = candidates.take(10).toList();
@@ -313,10 +324,37 @@ class RecommendationService {
   //  阶段三：评分
   // ============================================================
 
+  /// 剔除用户明确 👎 过的同款组合
+  ///
+  /// 判定用集合相等（同一批单品，顺序无关）。
+  ///
+  /// 注意：**必须返回新列表**。调用方会 `clear()` 原列表再 `addAll` 返回值，
+  /// 若这里直接返回同一个实例，就会把自己清空。
+  List<RecommendationResult> _removeDisliked(
+    List<RecommendationResult> candidates,
+    List<List<String>> disliked,
+  ) {
+    if (disliked.isEmpty) {
+      return List<RecommendationResult>.of(candidates);
+    }
+    final dislikedSets = disliked
+        .map((ids) => ids.toSet())
+        .toList(growable: false);
+
+    return candidates.where((c) {
+      final ids = c.itemIds.toSet();
+      for (final d in dislikedSets) {
+        if (d.length == ids.length && d.containsAll(ids)) return false;
+      }
+      return true;
+    }).toList();
+  }
+
   /// 多维度评分（满分 100）
   RecommendationResult _score(
     RecommendationResult result,
     WeatherData weather,
+    PreferenceProfile preference,
   ) {
     double styleScore = 0;
     double colorScore = 0;
@@ -393,8 +431,10 @@ class RecommendationService {
     }
 
     // ---------- 偏好匹配度（满分 10）----------
-    // V1 暂不做用户偏好匹配，统一给 5 分基础分
-    preferenceScore = 5;
+    // 没有反馈数据时给 5 分基础分（中性，不影响排序）；
+    // 有数据时把 -1~1 的偏好分映射到 0~10。
+    // 此前这里是硬编码 5 分，等于「偏好」这一维度从未参与推荐。
+    preferenceScore = 5 + preference.comboScore(items) * 5;
 
     final total = [
       styleScore,

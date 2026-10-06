@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'constants/routes.dart';
+import 'local_store.dart';
 import '../app_shell.dart';
 import '../features/wardrobe/presentation/pages/wardrobe_page.dart';
 import '../features/wardrobe/presentation/pages/add_item_page.dart';
@@ -21,34 +22,44 @@ import '../features/auth/presentation/providers/auth_provider.dart';
 /// 根导航 Key（全屏页面用）
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// 不需要登录也能停留的页面
-const Set<String> _publicRoutes = {AppRoutes.onboarding, AppRoutes.login};
-
 /// GoRouter 实例
 ///
 /// 用 Provider 持有而不是全局 final，是为了在 redirect 里能 `ref.read(authProvider)`：
 /// 登录态一变就 refresh，守卫自动把用户送到该去的页面。
 /// 此前没有任何 redirect，未登录用户可以直接进衣橱，退出登录后也只是原地不动。
 final routerProvider = Provider<GoRouter>((ref) {
+  // 看过引导页就不再从引导页起步（LocalStore 已在 main() 里 preload）
+  final seenOnboarding = LocalStore.seenOnboardingSync;
+
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: AppRoutes.onboarding,
+    initialLocation: seenOnboarding ? AppRoutes.login : AppRoutes.onboarding,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final location = state.matchedLocation;
-      final isPublic = _publicRoutes.contains(location);
+
+      // 引导页是否算「可停留」取决于用户看没看过：
+      // 看过之后就不该再回到引导页了
+      final isOnboarding = location == AppRoutes.onboarding;
+      final onboardingAllowed = !seenOnboarding;
+      final isLogin = location == AppRoutes.login;
 
       // Supabase 还没给出初始会话（含未初始化的场景）：先不动，
       // 否则首帧会闪一下登录页再跳走。
       if (authState.status == AuthStatus.unknown) return null;
 
-      // 未登录：只允许停在引导页 / 登录页，其它一律回登录页
+      // 未登录：只能停在引导页（没看过时）/ 登录页
       if (!authState.isLoggedIn) {
-        return isPublic ? null : AppRoutes.login;
+        if (isLogin) return null;
+        if (isOnboarding && onboardingAllowed) return null;
+        // 没看过引导 → 先看引导；看过 → 直接登录
+        return onboardingAllowed ? AppRoutes.onboarding : AppRoutes.login;
       }
 
-      // 已登录：停在引导页 / 登录页没意义，直接进衣橱
-      return isPublic ? AppRoutes.wardrobe : null;
+      // 已登录：引导页 / 登录页都没意义，直接进衣橱
+      if (isLogin || isOnboarding) return AppRoutes.wardrobe;
+
+      return null;
     },
     routes: [
       // 新手引导
