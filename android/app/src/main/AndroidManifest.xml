@@ -3,7 +3,12 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <!-- 拍照与相册（录入衣物照片） -->
-    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- 注意：这里**不要**声明 android.permission.CAMERA。
+         image_picker 走 ACTION_IMAGE_CAPTURE Intent 调系统相机 App，
+         权限由系统相机 App 自己持有并负责申请，调用方不需要 CAMERA 权限。
+         反之，manifest 一旦声明 CAMERA，image_picker 会要求该权限已授予，
+         而本项目没有（也无法）做运行时申请，takePhoto() 会直接抛
+         camera_access_denied，导致拍照录入完全不可用。 -->
     <!-- Android 13+ 读取媒体图片 -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <!-- Android 12 及以下的相册读取（最高只到 32，新系统自动忽略） -->
@@ -21,7 +26,10 @@
     <application
         android:label="穿啥"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
+        <!-- allowBackup=false：Supabase 会话 token 存在 shared_preferences，
+             若允许备份，adb backup / 云备份可把 token 导出到设备外。 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

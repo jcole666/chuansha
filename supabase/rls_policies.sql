@@ -175,12 +175,23 @@ create policy "outfits_delete_own"
 --
 -- 若 bucket 名有变化，请同步改掉下面的 'clothing'。
 
--- 读取：登录用户可读（bucket 若为 public 可省略这条）
+-- 读取：只能读自己的 users/{uid}/ 目录。
+--
+-- 为什么必须限定到自己的 users/{uid}/ 目录：
+--   早期版本这里是 `using (bucket_id = 'clothing')`，即任何登录用户都能
+--   SELECT 整个 bucket。由于 bucket 为 public 且代码用 getPublicUrl，
+--   攻击者登录后可直接 storage.list() 枚举出所有
+--   users/{他人uid}/xxx.jpg，再批量下载全部用户的照片。
+--   把读取范围收紧到 auth.uid() 自己的目录，才能堵住这个横向越权。
 drop policy if exists "clothing_storage_read" on storage.objects;
 create policy "clothing_storage_read"
   on storage.objects for select
   to authenticated
-  using (bucket_id = 'clothing');
+  using (
+    bucket_id = 'clothing'
+    and (storage.foldername(name))[1] = 'users'
+    and (storage.foldername(name))[2] = auth.uid()::text
+  );
 
 -- 只允许往自己的 users/{uid}/ 目录写
 drop policy if exists "clothing_storage_insert_own" on storage.objects;
@@ -230,6 +241,23 @@ where n.nspname = 'public'
   and c.relname in ('users', 'clothing_items', 'wear_records', 'outfits')
 group by c.relname, c.relrowsecurity
 order by c.relname;
+
+
+-- ------------------------------------------------------------
+-- 6b. 验证：Storage 策略（storage.objects 在 storage schema，上面那条查不到）
+-- ------------------------------------------------------------
+-- 期望：4 条策略，且 clothing_storage_read 的 qual 里必须出现
+--       auth.uid()（说明读取已限定到自己目录，而非整个 bucket）。
+select
+  p.policyname                       as 策略名,
+  p.cmd                              as 命令,
+  p.roles                            as 角色,
+  p.qual                             as using条件
+from pg_policies p
+where p.schemaname = 'storage'
+  and p.tablename = 'objects'
+  and p.policyname like 'clothing_storage_%'
+order by p.policyname;
 
 
 -- ------------------------------------------------------------
