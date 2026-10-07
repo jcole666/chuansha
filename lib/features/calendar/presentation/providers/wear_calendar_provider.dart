@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/error_log.dart';
+import '../../../../core/local_store.dart';
 import '../../../../data/models/wear_record.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../wardrobe/presentation/providers/wardrobe_provider.dart';
@@ -46,12 +50,24 @@ class WearCalendarState {
   final List<WearRecord> records;
   final bool isLoading;
 
-  const WearCalendarState({this.records = const [], this.isLoading = false});
+  /// 当前展示的是本地缓存（网络请求失败后回退）
+  final bool isOffline;
 
-  WearCalendarState copyWith({List<WearRecord>? records, bool? isLoading}) {
+  const WearCalendarState({
+    this.records = const [],
+    this.isLoading = false,
+    this.isOffline = false,
+  });
+
+  WearCalendarState copyWith({
+    List<WearRecord>? records,
+    bool? isLoading,
+    bool? isOffline,
+  }) {
     return WearCalendarState(
       records: records ?? this.records,
       isLoading: isLoading ?? this.isLoading,
+      isOffline: isOffline ?? this.isOffline,
     );
   }
 
@@ -127,11 +143,16 @@ class WearCalendarNotifier extends StateNotifier<WearCalendarState> {
   String? get _userId => _ref.read(currentUserIdProvider);
 
   /// 加载所有穿搭记录
+  ///
+  /// 成功时写一份本地缓存；失败时回退到缓存并标记 [WearCalendarState.isOffline]，
+  /// 这样断网也能看到上次的记录，而不是日历一片空白（用户会以为记录丢了）。
   Future<void> load() async {
     final userId = _userId;
     if (userId == null) return;
 
     state = state.copyWith(isLoading: true);
+    final cacheKey = CacheKeys.wearRecords(userId);
+
     try {
       final res = await _client
           .from('wear_records')
@@ -142,9 +163,36 @@ class WearCalendarNotifier extends StateNotifier<WearCalendarState> {
           .map((row) => WearRecord.fromJson(row as Map<String, dynamic>))
           .toList();
       state = WearCalendarState(records: records, isLoading: false);
-    } catch (_) {
-      // 失败时清空旧数据，避免残留上一个账号的穿搭记录
-      state = state.copyWith(records: const [], isLoading: false);
+      // 缓存写入失败不影响主流程
+      await LocalStore.writeCache(
+        cacheKey,
+        jsonEncode(records.map((e) => e.toJson()).toList()),
+      );
+    } catch (e) {
+      final cached = LocalStore.readCache(cacheKey);
+      if (cached != null) {
+        try {
+          final records = (jsonDecode(cached) as List)
+              .map((row) => WearRecord.fromJson(row as Map<String, dynamic>))
+              .toList();
+          state = state.copyWith(
+            records: records,
+            isLoading: false,
+            isOffline: true,
+          );
+          return;
+        } catch (_) {
+          // 缓存坏了，走下面的空数据分支
+        }
+      }
+      ErrorLog.record('加载穿搭记录', e);
+      state = state.copyWith(
+        // 连缓存都没有时才清空：避免残留上一个账号的穿搭记录，
+        // 同时断网有缓存时走上面的回退分支，不会走到这里。
+        records: const [],
+        isLoading: false,
+        isOffline: true,
+      );
     }
   }
 

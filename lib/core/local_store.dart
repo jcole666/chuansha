@@ -98,4 +98,7 @@ class CacheKeys {
 
   /// 搭配列表（按用户区分）
   static String outfits(String userId) => 'outfits_$userId';
+
+  /// 穿搭记录（按用户区分）
+  static String wearRecords(String userId) => 'wear_records_$userId';
 }

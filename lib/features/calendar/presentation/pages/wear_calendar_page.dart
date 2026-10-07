@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../shared/widgets/item_image.dart';
+import '../../../../../shared/widgets/offline_banner.dart';
 import '../../../../../data/models/clothing_item.dart';
 import '../../../../../data/models/wear_record.dart';
 import '../../../wardrobe/presentation/providers/wardrobe_provider.dart';
@@ -55,6 +56,12 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
       ),
       body: Column(
         children: [
+          // 离线提示：日历数据来自本地缓存时明确告知，
+          // 否则用户看到断网后的日历会以为记录丢了
+          if (calendarState.isOffline && calendarState.records.isNotEmpty)
+            OfflineBanner(
+              onRetry: () => ref.read(wearCalendarProvider.notifier).load(),
+            ),
           // 月份切换栏
           _buildMonthBar(),
           // 星期表头
@@ -239,6 +246,9 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
     final isToday = _isSameDay(selected, DateTime.now());
     final dateLabel = '${selected.month}月${selected.day}日';
     final dayRecords = calendarState.recordsFor(selected);
+    // 离线且完全没有缓存时，"这一天是空的"是网络原因，不是真的没记录
+    final noDataOffline =
+        calendarState.isOffline && calendarState.records.isEmpty;
 
     return Column(
       children: [
@@ -284,7 +294,7 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
         // 穿搭列表
         Expanded(
           child: dayRecords.isEmpty
-              ? _buildEmptyDay()
+              ? _buildEmptyDay(noDataOffline)
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: dayRecords.length,
@@ -321,19 +331,24 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
   }
 
   /// 空日期提示
-  Widget _buildEmptyDay() {
+  ///
+  /// [offlineNoCache] 为 true 时是断网且没有本地缓存，不能显示
+  /// 「这一天还没有穿搭记录」——那会让用户以为记录丢了。
+  Widget _buildEmptyDay(bool offlineNoCache) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.calendar_today_outlined,
+            offlineNoCache
+                ? Icons.cloud_off_outlined
+                : Icons.calendar_today_outlined,
             size: 40,
             color: Colors.grey.shade300,
           ),
           const SizedBox(height: 8),
           Text(
-            '这一天还没有穿搭记录',
+            offlineNoCache ? '当前无网络，暂时看不到穿搭记录' : '这一天还没有穿搭记录',
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: context.textSecondaryColor),
