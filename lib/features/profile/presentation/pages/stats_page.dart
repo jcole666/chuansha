@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../data/models/clothing_item.dart';
 import '../../../../../shared/widgets/empty_state.dart';
@@ -50,6 +51,9 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       );
     }
 
+    // 「久未穿着」先算一次：0 件时整块隐藏，不再留一个空标题
+    final longNotWorn = _longNotWorn(items);
+
     return Scaffold(
       appBar: AppBar(title: const Text('穿着统计')),
       body: ListView(
@@ -66,9 +70,21 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           _buildSectionTitle(context, '💸 性价比最低'),
           ..._worstCpw(items).map((i) => _rankRow(context, i, 'cpw')),
 
-          const SizedBox(height: 20),
-          _buildSectionTitle(context, '⏰ 久未穿着'),
-          ..._longNotWorn(items).map((i) => _rankRow(context, i, 'notworn')),
+          // ⏰ 久未穿着（都还在穿时给一句说明，而不是空标题 + 空列表）
+          if (longNotWorn.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _buildSectionTitle(context, '⏰ 久未穿着'),
+            ...longNotWorn.map((i) => _rankRow(context, i, 'notworn')),
+          ] else if (items.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            _buildSectionTitle(context, '⏰ 久未穿着'),
+            Text(
+              '最近都在穿，没有闲置超过 ${AppConstants.longNotWornDays} 天的衣物',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: context.textSecondaryColor,
+              ),
+            ),
+          ],
 
           const SizedBox(height: 20),
           _buildSectionTitle(context, '📊 分类分布'),
@@ -304,14 +320,24 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     return sorted.take(5).toList();
   }
 
-  /// 最近 60 天没穿过的
+  /// 超过 [AppConstants.longNotWornDays] 天没穿过的（含「从未穿过」）
+  ///
+  /// 之前只是按 lastWornDate 升序取前 5 件，等于「随便挑 5 件」——
+  /// 小衣橱里昨天刚穿过的衣服也会被列进「久未穿着」，名不副实。
+  /// 现在先按阈值过滤（复用 ClothingItem.isLongNotWorn），再按最久未穿排序。
   List<ClothingItem> _longNotWorn(List<ClothingItem> items) {
-    final sorted = List<ClothingItem>.from(items)
-      ..sort((a, b) {
-        final da = a.lastWornDate ?? DateTime(2000);
-        final db = b.lastWornDate ?? DateTime(2000);
-        return da.compareTo(db);
-      });
+    final filtered = items.where(
+      (i) => i.isLongNotWorn(AppConstants.longNotWornDays),
+    );
+    final sorted = List<ClothingItem>.from(filtered)..sort((a, b) {
+      // 「从未穿过」（lastWornDate == null）排在最前面，其余按日期从早到晚
+      final da = a.lastWornDate;
+      final db = b.lastWornDate;
+      if (da == null && db == null) return 0;
+      if (da == null) return -1;
+      if (db == null) return 1;
+      return da.compareTo(db);
+    });
     return sorted.take(5).toList();
   }
 

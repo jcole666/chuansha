@@ -5,6 +5,9 @@ import '../../../../../core/constants/routes.dart';
 import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/utils/date_utils.dart' as date_util;
+import '../../../../../data/models/clothing_item.dart';
+import '../../../../../data/models/weather_data.dart';
+import '../../../../../domain/enums/clothing_status.dart';
 import '../../../../../shared/widgets/empty_state.dart';
 import '../../../../../shared/widgets/shimmer_card.dart';
 import '../../../../../shared/widgets/error_view.dart';
@@ -137,11 +140,9 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
             ),
           )
         else if (state.recommendations.isEmpty)
-          const EmptyState(
-            icon: Icons.inventory_outlined,
-            title: '暂时无法生成推荐',
-            subtitle: '尝试录入更多不同类型的衣服',
-          )
+          // 衣物数量够了却生成不出推荐：明确告诉用户缺哪一类，
+          // 而不是一句「无法生成推荐」把人晾在那儿。
+          _buildNoRecommendation(state.weather, wardrobeState.allItems)
         else
           ...state.recommendations.asMap().entries.map((entry) {
             final idx = entry.key;
@@ -259,6 +260,119 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
         ),
       ),
     );
+  }
+
+  /// 衣物够了但生成不出推荐时的空态
+  ///
+  /// 之前只有一句「暂时无法生成推荐」——用户录了 5 件全是上衣也不知道下一步干嘛。
+  /// 这里按 recommendation_service 的组合规则反推缺什么，给出具体引导 + 入口。
+  Widget _buildNoRecommendation(
+    WeatherData? weather,
+    List<ClothingItem> items,
+  ) {
+    // 天气还没到（首帧）：不要瞎猜缺什么，给通用但不空洞的引导
+    if (weather == null) {
+      return EmptyState(
+        icon: Icons.inventory_outlined,
+        title: '暂时无法生成推荐',
+        subtitle: '天气数据还没到，或衣橱里能搭配的品类还不够\n去衣橱再添几件不同品类的衣服试试',
+        actionLabel: '去衣橱添加',
+        onAction: () => context.push(AppRoutes.addItem),
+      );
+    }
+
+    return EmptyState(
+      icon: Icons.checkroom_outlined,
+      title: '暂时还凑不出一套',
+      subtitle: _diagnoseMissing(weather, items),
+      actionLabel: '去衣橱添加',
+      onAction: () => context.push(AppRoutes.addItem),
+    );
+  }
+
+  /// 诊断「到底缺哪一类」
+  ///
+  /// 镜像 recommendation_service 的规则：
+  /// - 阶段一会剔除「非已洗好」的衣物，以及套装 / 内衣 / 配饰类；
+  /// - 组合模式 A：连衣裙 + 鞋；组合模式 B：上衣 + 下装 + 鞋（外套可选）。
+  /// 所以真正会卡住的是「上身（上衣或连衣裙）」「下装」「鞋」三类。
+  String _diagnoseMissing(WeatherData weather, List<ClothingItem> items) {
+    final temp = weather.temperature;
+    final tempText = '${temp.toInt()}℃';
+
+    final clean = items.where((i) => i.status == ClothingStatus.clean).toList();
+    if (items.isNotEmpty && clean.isEmpty) {
+      return '衣橱里的衣服都不在「已洗好」状态，把常用的几件标记回已洗好就会出推荐了';
+    }
+
+    final usable = clean.where((i) => !_excludedCategories.contains(i.category));
+    if (usable.isEmpty) {
+      return '衣橱里还没有能参与搭配的上衣 / 下装 / 鞋'
+          '（套装、内衣、配饰不参与推荐），先录几件基础款试试';
+    }
+
+    final tops = usable.where(
+      (i) => i.category == '上衣' && _isTopSuitable(i.subCategory ?? '', temp),
+    );
+    final bottoms = usable.where(
+      (i) => i.category == '下装' && _isBottomSuitable(i.subCategory ?? '', temp),
+    );
+    final shoes = usable.where(
+      (i) =>
+          i.category == '鞋' && _isShoesSuitable(i.subCategory ?? '', temp, weather),
+    );
+    final dresses = usable.where(
+      (i) => i.category == '连衣裙' && _isDressSuitable(temp),
+    );
+    final outerwear = usable.where(
+      (i) =>
+          i.category == '外套' && _isOuterwearSuitable(i.subCategory ?? '', temp),
+    );
+
+    // 不区分温度时的件数，用来区分「压根没有」和「有但不适合这个温度」
+    int rawCount(String category) =>
+        usable.where((i) => i.category == category).length;
+
+    // 鞋：两种组合模式都必须要
+    if (shoes.isEmpty) {
+      final raw = rawCount('鞋');
+      if (raw == 0) return '还缺一双鞋，再录入 1 双就能生成推荐了';
+      if (weather.isRainy || weather.isSnowy) {
+        return '今天有雨雪，衣橱里的 $raw 双鞋都不合适，需要一双靴子或运动鞋';
+      }
+      return '衣橱里的 $raw 双鞋在 $tempText 下都不太合适，换季款再录入 1 双就能生成推荐了';
+    }
+
+    // 上身：上衣或连衣裙二选一
+    if (tops.isEmpty && dresses.isEmpty) {
+      final rawTops = rawCount('上衣');
+      final rawDresses = rawCount('连衣裙');
+      if (rawTops == 0 && rawDresses == 0) {
+        return '还缺一件上衣，再录入 1 件就能生成推荐了';
+      }
+      if (rawTops == 0 && temp < 20) {
+        return '连衣裙要 20℃ 以上才推荐，当前 $tempText，'
+            '再加一件长袖 / 卫衣 / 针织衫就能出推荐了';
+      }
+      return '衣橱里的上衣在 $tempText 下都不太合适，'
+          '换季款再录入 1 件就能生成推荐了';
+    }
+
+    // 下装：有连衣裙时可以免，否则必须要
+    if (bottoms.isEmpty && dresses.isEmpty) {
+      final raw = rawCount('下装');
+      if (raw == 0) return '还缺一件下装，再录入 1 件就能生成推荐了';
+      return '衣橱里的 $raw 件下装在 $tempText 下都不太合适，'
+          '换季款再录入 1 件就能生成推荐了';
+    }
+
+    // 上面都齐了还是空的：多半是组合被 👎 全部剔除或数据异常。
+    // 外套不影响能否出推荐，但天冷时值得提一句。
+    if (temp <= 15 && outerwear.isEmpty) {
+      return '$tempText 有点冷，衣橱里也没有适合这个温度的外套，加一件会更暖和';
+    }
+
+    return '当前天气下这些衣服暂时搭不出一套，去衣橱再添几件不同品类的试试';
   }
 
   /// 天气卡片
@@ -691,4 +805,80 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
     if (temp > 0) return '羽绒服';
     return '全副武装';
   }
+
+  // ===== 以下为 recommendation_service 阶段一过滤规则的镜像 =====
+  // 推荐页只读得到结果，拿不到中间态；为了告诉用户「缺什么」，
+  // 这里把同样的温度规则抄一份。改动 service 时记得同步这里。
+
+  /// 不参与推荐的品类
+  static const Set<String> _excludedCategories = {
+    '睡衣套装',
+    '内衣',
+    '西服套装',
+    '运动套装',
+    '配饰',
+  };
+
+  bool _isTopSuitable(String sub, double temp) {
+    if (temp > 30) return const ['短袖', '背心'].any((s) => sub.contains(s));
+    if (temp >= 25) return const ['短袖', '衬衫'].any((s) => sub.contains(s));
+    if (temp >= 20) {
+      return const ['短袖', '长袖', '衬衫'].any((s) => sub.contains(s));
+    }
+    if (temp >= 15) {
+      return const ['长袖', '卫衣', '衬衫', '针织衫'].any((s) => sub.contains(s));
+    }
+    if (temp >= 10) {
+      return const ['卫衣', '针织衫', '衬衫'].any((s) => sub.contains(s));
+    }
+    if (temp >= 5) return const ['针织衫'].any((s) => sub.contains(s));
+    return const ['针织衫', '长袖'].any((s) => sub.contains(s));
+  }
+
+  bool _isBottomSuitable(String sub, double temp) {
+    if (temp > 30) return const ['短裤'].any((s) => sub.contains(s));
+    if (temp >= 20) {
+      return const ['短裤', '牛仔长裤', '休闲长裤', '半裙'].any(
+        (s) => sub.contains(s),
+      );
+    }
+    if (temp >= 10) {
+      return const ['牛仔长裤', '休闲长裤', '西装长裤', '半裙'].any(
+        (s) => sub.contains(s),
+      );
+    }
+    return const ['牛仔长裤', '休闲长裤', '西装长裤'].any((s) => sub.contains(s));
+  }
+
+  bool _isOuterwearSuitable(String sub, double temp) {
+    if (temp > 25) return false;
+    if (temp >= 20) return const ['夹克', '牛仔外套'].any((s) => sub.contains(s));
+    if (temp >= 15) {
+      return const ['夹克', '风衣', '牛仔外套'].any((s) => sub.contains(s));
+    }
+    if (temp >= 10) {
+      return const ['西装', '夹克', '风衣'].any((s) => sub.contains(s));
+    }
+    if (temp >= 5) return const ['大衣', '风衣'].any((s) => sub.contains(s));
+    if (temp >= 0) return const ['大衣'].any((s) => sub.contains(s));
+    return true; // 低于 0℃ 啥外套都行
+  }
+
+  bool _isShoesSuitable(String sub, double temp, WeatherData weather) {
+    if (weather.isRainy || weather.isSnowy) {
+      return const ['靴子', '运动鞋'].any((s) => sub.contains(s));
+    }
+    if (temp > 30) {
+      return const ['凉鞋', '拖鞋', '平底鞋'].any((s) => sub.contains(s));
+    }
+    if (temp >= 20) {
+      return const ['凉鞋', '运动鞋', '平底鞋'].any((s) => sub.contains(s));
+    }
+    if (temp >= 15) return const ['运动鞋', '平底鞋'].any((s) => sub.contains(s));
+    if (temp >= 10) return const ['运动鞋', '靴子'].any((s) => sub.contains(s));
+    if (temp >= 0) return const ['靴子', '运动鞋'].any((s) => sub.contains(s));
+    return const ['靴子'].any((s) => sub.contains(s));
+  }
+
+  bool _isDressSuitable(double temp) => temp >= 20;
 }

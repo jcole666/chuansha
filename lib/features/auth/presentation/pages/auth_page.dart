@@ -191,16 +191,13 @@ class _AuthPageState extends ConsumerState<AuthPage>
                 ),
                 const SizedBox(height: 8),
 
-                // 错误提示
+                // 结果提示（成功绿色 / 失败红色）
+                //
+                // Supabase 开启邮箱验证时，注册接口返回 user == null，
+                // auth_provider 把「注册成功，请前往邮箱验证后登录」放进了
+                // errorMessage。若一律按红色渲染，用户会以为注册失败。
                 if (authState.errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      authState.errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                  _buildMessageBanner(context, authState.errorMessage!),
 
                 // 忘记密码（仅登录模式；注册模式没有"忘记"一说）
                 if (!isRegister)
@@ -310,6 +307,63 @@ class _AuthPageState extends ConsumerState<AuthPage>
     } else {
       notifier.signUp(email, password);
     }
+  }
+
+  /// 结果提示条
+  ///
+  /// 成功类（如「注册成功，请前往邮箱验证后登录」）用绿色 + ✓，
+  /// 真正的错误（邮箱已注册、密码错误…）保持红色 + ⚠，
+  /// 让用户一眼分清「注册成了」和「注册失败」。
+  Widget _buildMessageBanner(BuildContext context, String message) {
+    final isSuccess = _isSuccessMessage(message);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // 深色模式下品牌色偏暗，提示色各提亮一档保证对比度
+    final successColor = isDark
+        ? const Color(0xFF66BB6A)
+        : AppTheme.successColor;
+    final errorColor = isDark ? const Color(0xFFEF5350) : AppTheme.errorColor;
+    final color = isSuccess ? successColor : errorColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+              size: 18,
+              color: color,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: color, fontSize: 13, height: 1.3),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 判断提示文案是否属于「成功」性质
+  ///
+  /// 先排除明显的失败词，再匹配成功词，避免把「注册失败」误判成成功。
+  bool _isSuccessMessage(String message) {
+    for (final word in const ['失败', '错误', '超时', '不正确', '已被注册']) {
+      if (message.contains(word)) return false;
+    }
+    return message.contains('成功') ||
+        message.contains('已发送') ||
+        message.contains('请查收');
   }
 
   /// 仅在「注册成功」时把性别写入 Supabase users 表
