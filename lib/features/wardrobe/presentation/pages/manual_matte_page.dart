@@ -134,11 +134,12 @@ class _ManualMattePageState extends State<ManualMattePage> {
     } catch (e, s) {
       if (!mounted) return;
       setState(() => _processing = false);
-      // 技术细节记入 ErrorLog，对用户只暴露人话并保留引导。
+      // 技术细节记入 ErrorLog，对用户只暴露人话。
+      // 这里不提「改用手动抠图」——当前就是手动抠图页，那样说会自相矛盾。
       ErrorLog.record('手动抠图', e, s);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('抠图失败，请重试，或改用「手动抠图」')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('抠图失败，请重试；若多次失败可换个背景更干净的照片')),
+      );
     }
   }
 
