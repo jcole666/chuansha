@@ -5,6 +5,7 @@ import '../../../../../core/constants/routes.dart';
 import '../../../../../core/constants/category_data.dart';
 import '../../../../../core/constants/color_data.dart';
 import '../../../../../core/error_log.dart';
+import '../../../../../core/local_store.dart';
 import '../../../../../shared/widgets/empty_state.dart';
 import '../../../../../shared/widgets/error_view.dart';
 import '../../../../../shared/widgets/shimmer_card.dart';
@@ -148,17 +149,40 @@ class _WardrobePageState extends ConsumerState<WardrobePage> {
             });
           },
         ),
-        // 视图切换
+        // 视图切换（同时写本地存储，见 _toggleViewMode）
         IconButton(
           icon: Icon(
             state.isGridView
                 ? Icons.view_list_rounded
                 : Icons.grid_view_rounded,
           ),
-          onPressed: () => notifier.toggleViewMode(),
+          tooltip: state.isGridView ? '切换为列表' : '切换为网格',
+          onPressed: () => _toggleViewMode(state, notifier),
         ),
       ],
     );
+  }
+
+  /// 切换网格 / 列表视图，并把偏好写进本地存储
+  ///
+  /// 之前只改内存状态（notifier.toggleViewMode），重启 App 又被打回网格；
+  /// 而设置页的同名开关是持久化的，两个入口口径不一致。
+  /// 这里和设置页一样写 LocalStore，冷启动时
+  /// WardrobeListNotifier 才会从本地读到上次的选择。
+  Future<void> _toggleViewMode(
+    WardrobeListState state,
+    WardrobeListNotifier notifier,
+  ) async {
+    // 显式算出目标值再下发：setGridView 是幂等的，
+    // 比 toggle 之后再反推当前值更不容易写反。
+    final next = !state.isGridView;
+    notifier.setGridView(next);
+    try {
+      await LocalStore.setGridView(next);
+    } catch (e, s) {
+      // 存偏好失败不该影响本次切换的观感，记日志即可
+      ErrorLog.record('保存衣橱视图偏好', e, s);
+    }
   }
 
   /// 底部批量操作栏（多选模式）

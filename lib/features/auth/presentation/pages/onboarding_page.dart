@@ -39,7 +39,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // 不展示跳过按钮，必须走完引导 → 登录
+            // 右上角「跳过」：不想看介绍的用户不用滑完 3 页。
+            // 注意它不等于「跳过隐私政策」——未同意时只会把用户送到
+            // 最后一页去勾选，见 [_skip]。
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 8, 8, 0),
+                child: TextButton(
+                  onPressed: _skip,
+                  child: Text(
+                    '跳过',
+                    style: TextStyle(color: context.textSecondaryColor),
+                  ),
+                ),
+              ),
+            ),
 
             // 滑页内容
             Expanded(
@@ -162,6 +177,38 @@ class _OnboardingPageState extends State<OnboardingPage> {
         ),
       ),
     );
+  }
+
+  /// 「跳过」引导
+  ///
+  /// 合规口径：跳过的是**介绍**，不是隐私政策同意。
+  /// 所以未勾选同意时不放行，而是把用户送到最后一页（勾选项在那儿），
+  /// 勾上之后再点「跳过 / 完成」才真正进入登录页。
+  Future<void> _skip() async {
+    if (!_isLastPage) {
+      // 先把最后一页（含隐私政策勾选）翻出来，再提示用户去同意
+      await _controller.animateToPage(
+        2,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      if (!mounted) return;
+      _showConsentHint();
+      return;
+    }
+
+    if (!_agreed) {
+      _showConsentHint();
+      return;
+    }
+
+    await _finish();
+  }
+
+  void _showConsentHint() {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('请先阅读并同意《隐私政策》后再继续')));
   }
 
   Future<void> _finish() async {

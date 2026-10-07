@@ -135,8 +135,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// 发送重置密码邮件
   ///
-  /// 返回错误文案（成功时返回 null）。
+  /// 返回**直接展示给用户**的提示文案：失败时是错误原因，
+  /// 成功时是一段「下一步该干什么」的说明（调用方 auth_page.dart 直接
+  /// `error ?? 兜底文案` 弹 SnackBar，所以这里返回非空文案即可生效）。
   /// 之前没有这个入口，用户忘记密码就直接卡死了。
+  ///
+  /// ⚠️ redirectTo（深链）暂未配置，这里**故意不传**：
+  /// 项目当前没有 app_links / uni_links 依赖，AndroidManifest 里没有自定义
+  /// scheme 的 intent-filter，iOS Info.plist 里也没有 CFBundleURLSchemes。
+  /// 此时编一个 scheme 会让邮件链接指向一个没人接的地址，比不传更糟
+  /// （不传时至少会落到 Supabase 的 Site URL，用户在网页里能改完密码）。
+  ///
+  /// 待配置深链后再改：
+  ///   1. pubspec 加 app_links，AndroidManifest 加 <intent-filter>（scheme）
+  ///      且 iOS Info.plist 加 CFBundleURLSchemes；
+  ///   2. 下面改成
+  ///      `resetPasswordForEmail(trimmed, redirectTo: '<scheme>://reset-callback')`；
+  ///   3. 把该 URL 登记到 Supabase 控制台 → Authentication →
+  ///      URL Configuration → Redirect URLs，否则 Supabase 会拒绝跳转；
+  ///   4. 路由里接住该深链并落到「设置新密码」页（现在没有这个页面）。
   Future<String?> sendPasswordReset(String email) async {
     final trimmed = email.trim();
     if (trimmed.isEmpty) return '请输入邮箱';
@@ -149,7 +166,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await client.auth
           .resetPasswordForEmail(trimmed)
           .timeout(const Duration(seconds: 20));
-      return null;
+      // 没有深链，邮件里的链接会在浏览器打开，改完密码不会自动回到 App，
+      // 所以必须把「回 App 用新密码登录」这一步写清楚，否则用户会卡在网页里。
+      return '重置邮件已发送至 $trimmed，请在邮件中打开链接设置新密码，'
+          '完成后返回穿啥用新密码登录';
     } on AuthException catch (e) {
       ErrorLog.record('重置密码', e);
       return _getErrorMessage(e.message);
