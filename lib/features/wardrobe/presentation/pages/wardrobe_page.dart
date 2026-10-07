@@ -17,6 +17,7 @@ import '../../../../../domain/enums/clothing_status.dart';
 import '../../../auth/presentation/providers/gender_provider.dart'
     show isMaleProvider;
 import '../providers/wardrobe_provider.dart';
+import '../../../../../core/theme/app_theme.dart';
 
 /// 衣橱页面
 ///

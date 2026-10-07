@@ -62,5 +62,6 @@ config.json
 # 临时与调试残留
 .tmp_u.json
 flutter_*.log
+build_log.txt
 screen_check*.png
 screen_check*.jpg
