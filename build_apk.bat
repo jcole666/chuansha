@@ -17,17 +17,38 @@ REM --- Network proxy (this machine routes outbound via a local proxy) ---
 REM Gradle does NOT read HTTP_PROXY/HTTPS_PROXY env vars; pass the proxy as
 REM JVM system props so the Gradle daemon can download dependencies.
 REM Clash for Windows randomly rotates its system-proxy port on each
-REM launch, so auto-detect the current port from HTTPS_PROXY/HTTP_PROXY
-REM instead of hardcoding it (15417 -> 43024 broke a previous build).
+REM launch, so auto-detect the current port instead of hardcoding it.
+REM Step 1: parse it from HTTPS_PROXY / HTTP_PROXY.
+REM Step 2: if the env vars are empty (Clash was restarted / system-proxy
+REM         toggled off), fall back to probing common local proxy ports with
+REM         PowerShell, so we never silently fall through to a direct
+REM         connection (which hangs forever on this network).
 set "PROXY_PORT="
 for /f "tokens=3 delims=/:" %%a in ("%HTTPS_PROXY%") do set "PROXY_PORT=%%a"
 if "%PROXY_PORT%"=="" for /f "tokens=3 delims=/:" %%a in ("%HTTP_PROXY%") do set "PROXY_PORT=%%a"
+
+if "%PROXY_PORT%"=="" (
+  echo Environment proxy vars empty - probing common local proxy ports...
+  for /f %%p in ('powershell -NoProfile -Command "$ports=@(25230,15417,7890,7891,7897,10808,10809,1080,8889,43024,11996); foreach($p in $ports){$c=New-Object Net.Sockets.TcpClient; try{$c.Connect('127.0.0.1',$p); if($c.Connected){Write-Output $p; $c.Close(); break}}catch{}} " ') do set "PROXY_PORT=%%p"
+)
+
 if not "%PROXY_PORT%"=="" (
   set JAVA_TOOL_OPTIONS=-Dfile.encoding=GBK -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=%PROXY_PORT% -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=%PROXY_PORT%
   echo Using local proxy at 127.0.0.1:%PROXY_PORT%
 ) else (
-  echo WARNING: no proxy port detected. Gradle will try direct, may hang/fail.
+  echo ============================================================
+  echo  ERROR: no local proxy port found.
+  echo  A direct connection WILL hang forever on this network.
+  echo  1. Open Clash for Windows and turn ON "System Proxy".
+  echo  2. Re-run this script.
+  echo  Or edit PROXY_PORT below and uncomment the override line.
+  echo ============================================================
+  echo.
+  pause
+  exit /b 1
 )
+REM Manual override if auto-detect ever picks the wrong port:
+REM set JAVA_TOOL_OPTIONS=-Dfile.encoding=GBK -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=7890 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=7890
 
 REM --- Your toolchain paths (edit these if yours differ) ---
 set ANDROID_HOME=F:\develop\android-sdk
