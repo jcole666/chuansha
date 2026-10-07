@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/error_log.dart';
+import '../../../../services/ai_matting_service.dart';
 import '../../../../services/image_service.dart';
 import '../../../../services/matting_service.dart';
 import 'manual_matte_page.dart';
@@ -58,6 +59,24 @@ class _ChangeItemImagePageState extends State<ChangeItemImagePage> {
       _isLoading = true;
       _error = null;
     });
+
+    // ① 优先 AI 分割模型（效果接近醒图智能抠图）
+    try {
+      if (await AiMattingService.instance.isAvailable()) {
+        final matted = await AiMattingService.instance.removeBackground(file);
+        if (!mounted) return;
+        setState(() {
+          _file = matted;
+          _isLoading = false;
+        });
+        return;
+      }
+    } catch (e, s) {
+      // AI 失败 → 静默降级到颜色抠图，只记日志
+      ErrorLog.record('AI抠图-降级', e, s);
+    }
+
+    // ② 降级：旧的纯色背景洪水填充
     try {
       final matted = await _mattingService.removeBackground(file);
       if (!mounted) return;

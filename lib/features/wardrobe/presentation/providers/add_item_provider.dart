@@ -5,6 +5,7 @@ import '../../../../../data/models/clothing_item.dart';
 import '../../../../../data/models/color_info.dart';
 import '../../../../../data/repositories/wardrobe_repository.dart';
 import '../../../../../domain/enums/clothing_status.dart';
+import '../../../../../services/ai_matting_service.dart';
 import '../../../../../services/image_service.dart';
 import '../../../../../services/image_upload_service.dart';
 import '../../../../../services/matting_service.dart';
@@ -144,15 +145,44 @@ class AddItemNotifier extends StateNotifier<AddItemState> {
     state = state.copyWith(imageFile: file, step: AddItemStep.cropping);
   }
 
-  /// 用 MODNet 抠图，把背景填充成白色
+  /// 智能抠图：把背景填充成白色。
+  ///
+  /// 优先走 **AI 分割模型**（[AiMattingService]，MODNet ONNX）——
+  /// 这是「醒图智能抠图」那种效果：能理解主体与背景，
+  /// 花地板 / 杂背景 / 浅色衣服都能抠。
+  ///
+  /// AI 不可用（模型未加载、内存不足、推理异常）时，
+  /// **自动降级**到旧的 [MattingService]（纯颜色洪水填充，只吃纯色背景），
+  /// 保证任何机型上都还能用，不会因为新功能把入口堵死。
   ///
   /// 替代原来的 1:1 正方形裁剪（image_cropper 在鸿蒙上闪退）。
   Future<void> matteImage() async {
-    if (state.imageFile == null) return;
+    final src = state.imageFile;
+    if (src == null) return;
 
     state = state.copyWith(isLoading: true);
+
+    // ① 先试 AI 模型
     try {
-      final matted = await _mattingService.removeBackground(state.imageFile!);
+      if (await AiMattingService.instance.isAvailable()) {
+        final matted = await AiMattingService.instance.removeBackground(src);
+        state = state.copyWith(
+          imageFile: matted,
+          step: AddItemStep.fillInfo,
+          isLoading: false,
+          errorMessage: null,
+          name: _defaultName(),
+        );
+        return;
+      }
+    } catch (e, s) {
+      // AI 失败不算致命：记日志后降级，不打断用户
+      ErrorLog.record('AI抠图-降级', e, s);
+    }
+
+    // ② 降级：旧的纯色背景填充
+    try {
+      final matted = await _mattingService.removeBackground(src);
       state = state.copyWith(
         imageFile: matted,
         step: AddItemStep.fillInfo,

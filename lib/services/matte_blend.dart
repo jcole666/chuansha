@@ -54,3 +54,31 @@ Uint8List compositeOnWhite(Uint8List bytes, int w, int h, Uint8List isBg) {
   }
   return out;
 }
+
+/// 按 **连续 alpha** 把前景合成到白底图上（AI 抠图用）。
+///
+/// 与 [compositeOnWhite] 的区别：那个吃的是二值遮罩（是/否背景），
+/// 这个是模型输出的连续 alpha（0 = 全背景，1 = 全前景，中间值 = 半透明边缘），
+/// 因此边缘过渡更自然，不需要再靠 3x3 覆盖率近似。
+///
+/// [alpha] 长度必须是 `w*h`，值域约定 [0,1]（超出会 clamp）。
+Uint8List compositeOnWhiteWithAlpha(
+  Uint8List bytes,
+  int w,
+  int h,
+  List<double> alpha,
+) {
+  final out = Uint8List(bytes.length);
+  for (var i = 0; i < w * h; i++) {
+    final base = i * 4;
+    var a = alpha.length > i ? alpha[i] : 1.0;
+    if (a < 0) a = 0;
+    if (a > 1) a = 1;
+    final inv = 1.0 - a;
+    out[base] = (bytes[base] * a + 255 * inv).round();
+    out[base + 1] = (bytes[base + 1] * a + 255 * inv).round();
+    out[base + 2] = (bytes[base + 2] * a + 255 * inv).round();
+    out[base + 3] = 255;
+  }
+  return out;
+}

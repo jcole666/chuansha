@@ -27,6 +27,9 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.2
 
+  # AI 抠图（MODNet 人像/主体分割，ONNX 推理）
+  onnxruntime: ^1.4.1
+
   # 定位
   geolocator: ^14.0.3
   geocoding: ^4.0.0
@@ -53,3 +56,5 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    # AI 抠图模型（MODNet fp16，约 12MB）
+    - assets/models/

@@ -11,7 +11,7 @@ Flutter + Riverpod + Supabase 构建，无需 Google 服务，Android / iOS 双�
 | 模块 | 说明 |
 |---|---|
 | **衣橱** | 拍照/相册录入衣物，自动抠图去背景，分类、颜色、季节、场合、风格多维标签，支持筛选、搜索、排序 |
-| **抠图** | 双方案：**智能抠图**（纯算法，适合纯色背景）+ **手动抠图**（手指描边，带边缘吸附，适合复杂背景） |
+| **抠图** | 双方案：**智能抠图**（接 MODNet AI 分割模型，花地板/杂背景/浅色衣服都能抠；模型不可用时自动降级为纯色背景算法）+ **手动抠图**（PS 风磁性套索，沿边缘点/拖自动吸附，右上角放大镜防手指遮挡） |
 | **搭配推荐** | 根据实时天气（温度/降水）从你的衣橱里推荐穿搭组合，可 👍/👎 反馈 |
 | **穿搭日历** | 记录每天穿了什么，自动累计衣物穿着次数，计算性价比 |
 | **统计** | 穿着频次、性价比排行 |
@@ -169,36 +169,50 @@ lib/
 │   └── repositories/          # 仓库层（Supabase 实现 + 内存实现）
 ├── domain/enums/          # 领域枚举
 ├── services/              # 无状态服务
-│   ├── matting_service.dart        # 自动抠图（洪水填充 + 后处理）
+│   ├── ai_matting_service.dart     # AI 智能抠图（MODNet ONNX 推理 → alpha 合成白底）
+│   ├── matting_service.dart        # 降级抠图（纯色背景洪水填充 + 后处理）
 │   ├── manual_matte_service.dart   # 手动抠图（描边 + 扫描线填充）
-│   ├── matte_geometry.dart         # 抠图几何算法（纯 Dart，可单测）
-│   ├── matte_blend.dart            # 白底合成
+│   ├── matte_geometry.dart         # 抠图几何算法（Sobel/距离场/Livewire 最短路，纯 Dart 可单测）
+│   ├── matte_blend.dart            # 白底合成（二值遮罩 / 连续 alpha 两种）
 │   ├── location_service.dart       # 定位
 │   ├── weather_service.dart        # 天气
 │   └── image_service.dart          # 拍照/相册/旋转
 ├── features/              # 按功能分模块（presentation / providers / pages）
 │   ├── auth/  wardrobe/  outfit/  calendar/  recommend/  profile/
-└── shared/widgets/        # 复用组件
+├── shared/widgets/        # 复用组件
+assets/
+└── models/                # AI 抠图模型
+    ├── modnet_fp16.onnx           # MODNet 主体分割（fp16，约 12MB）
+    ├── modnet_config.json         # 模型来源参考（注：其中 dtype 标注与权重实际精度不一致）
+    └── modnet_preprocessor.json   # 预处理参数（mean/std/短边/整除倍数，代码据此实现）
 ```
 
 ---
 
 ## 已知限制
 
-- **自动抠图**适合纯色背景（白墙、床单、地板）。复杂背景（花纹地板、衣服堆叠）请用**手动抠图**。
-  衣服占满整个画面时自动抠图会明确报错并引导去手动抠 —— 这是设计行为，因为四边全是衣服时没有背景色可参照。
+- **智能抠图**接的是 MODNet 分割模型（ONNX），能处理花纹地板、衣服堆叠、浅色衣服等复杂背景。
+  模型不可用（机型不支持 / 内存不足）时**自动降级**到纯色背景算法，不会堵死入口。
+  衣服占满整个画面时仍建议用**手动抠图**。
+- **手动抠图**是 PS 磁性套索风格：点一下落锚点（自动吸附边缘），也可按住沿边拖动走自动吸附线；
+  右上角常驻放大镜，避免手指挡住视线。
 - 天气依赖第三方 API，免费额度有限；未配置密钥时功能降级为提示而非假数据。
 - 目前仅支持邮箱注册登录，暂无第三方登录。
+- AI 模型会让 APK 体积增大约 12MB 以上（模型 + onnxruntime native 库）。
 
 ---
 
 ## 开发说明
 
 ```bash
+flutter pub get          # 拉依赖（新增 onnxruntime 后必须执行一次）
 flutter analyze          # 静态检查
 flutter test             # 单元测试
 dart format lib/         # 格式化
 ```
+
+> AI 抠图依赖 `onnxruntime` 与 `assets/models/modnet_fp16.onnx`（约 12MB，已入库）。
+> 换机器 / 拉新代码后先 `flutter pub get`，否则 `AiMattingService` 无法编译。
 
 > 若 `flutter analyze` 报 `CreateFile failed 231（管道范例都在使用中）`，
 > 那是 Windows 管道句柄耗尽的环境问题，重启终端或改用 IDE 分析器即可。

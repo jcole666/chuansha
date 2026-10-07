@@ -1,0 +1,8 @@
+{
+  "model_type": "modnet",
+  "source": "Xenova/modnet (Apache-2.0), 经 hf-mirror 下载",
+  "note": "这里的 dtype 字段来自上游 transformers.js 配置，写的是 fp32；但本目录实际模型 modnet_fp16.onnx 的权重是 fp16（已用 protobuf 解析确认：213 个 float16 + 2 个 int64 initializer）。推理代码不读这个字段，仅作溯源参考。",
+  "transformers.js_config": {
+    "dtype": "fp32"
+  }
+}
