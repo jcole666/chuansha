@@ -84,7 +84,19 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
   /// 加载天气 + 生成推荐
   Future<void> load() async {
     final userId = _userId;
-    if (userId == null) return;
+    if (userId == null) {
+      // 未登录（例如刚登出 / 账号切换的中间态）：显式清空推荐与「已反馈」标记，
+      // 否则 state 里会残留上一个账号的推荐卡片（含衣物名、图片 URL）与错误的
+      // 反馈标记，下个账号登录后若未重跑 load() 就会直接看到。
+      // 注意 RecommendState.copyWith 用 `?? this.x`，传空列表即可覆盖旧值。
+      state = state.copyWith(
+        recommendations: const [],
+        feedbackItemIds: const [],
+        isLoadingWeather: false,
+        isLoadingRecommendations: false,
+      );
+      return;
+    }
 
     state = state.copyWith(
       isLoadingWeather: true,
@@ -243,6 +255,10 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
 /// 推荐页 Provider
 final recommendProvider =
     StateNotifierProvider<RecommendNotifier, RecommendState>((ref) {
+      // 监听当前用户：换账号时 provider 自动重建、状态归零，
+      // 避免新账号看到上一个账号的推荐卡片（衣物名、图片 URL）与错误的
+      // 「已反馈」标记（跨账号数据泄漏）。
+      ref.watch(currentUserIdProvider);
       // WeatherService 内部会自己定位（LocationService）
       final weatherService = WeatherService();
       final recommendationService = RecommendationService();

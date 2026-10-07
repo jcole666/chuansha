@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/error_log.dart';
+import '../core/local_store.dart';
 
 /// 账号服务：注销账号（删除账号本身 + 全部数据）
 ///
@@ -78,5 +79,16 @@ class AccountService {
 
     // 4. 本地登出（清除本地会话）
     await _client.auth.signOut();
+
+    // 5. 清空本地离线缓存。
+    //    这条注销路径直接调 Supabase 的 signOut，**绕过了 AuthNotifier.signOut()**，
+    //    所以不会自动执行 LocalStore.clearCache()；不显式清一次的话，注销后本地
+    //    仍残留该账号的衣物 / 搭配缓存，下个账号在断网时会读到上一个账号的数据。
+    //    清缓存失败不应阻塞注销主流程，故单独 try/catch。
+    try {
+      await LocalStore.clearCache();
+    } catch (_) {
+      // 忽略：清缓存失败不影响注销主流程
+    }
   }
 }

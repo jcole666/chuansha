@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/constants/category_data.dart';
 import '../../../../../core/constants/color_data.dart';
+import '../../../../../core/error_log.dart';
 import '../../../../../shared/widgets/empty_state.dart';
 import '../../../../../shared/widgets/error_view.dart';
 import '../../../../../shared/widgets/shimmer_card.dart';
@@ -241,9 +242,12 @@ class _WardrobePageState extends ConsumerState<WardrobePage> {
         final msg = ref.read(wardrobeListProvider).errorMessage ?? '标记失败';
         messenger.showSnackBar(SnackBar(content: Text(msg)));
       }
-    } catch (e) {
-      // 失败时不退出选择模式，方便用户重试
-      messenger.showSnackBar(SnackBar(content: Text('标记失败：$e')));
+    } catch (e, s) {
+      // 失败时不退出选择模式，方便用户重试。
+      // 技术细节（如 PostgrestException）记入 ErrorLog，对用户只暴露人话，
+      // 避免把原始异常直接甩到界面上。
+      ErrorLog.record('批量标记', e, s);
+      messenger.showSnackBar(const SnackBar(content: Text('批量标记失败，请检查网络后重试')));
     }
   }
 

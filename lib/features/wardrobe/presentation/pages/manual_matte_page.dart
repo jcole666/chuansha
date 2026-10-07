@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/error_log.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../services/manual_matte_service.dart';
 
@@ -130,12 +131,14 @@ class _ManualMattePageState extends State<ManualMattePage> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(result);
-    } catch (e) {
+    } catch (e, s) {
       if (!mounted) return;
       setState(() => _processing = false);
+      // 技术细节记入 ErrorLog，对用户只暴露人话并保留引导。
+      ErrorLog.record('手动抠图', e, s);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('抠图失败：$e')));
+      ).showSnackBar(const SnackBar(content: Text('抠图失败，请重试，或改用「手动抠图」')));
     }
   }
 
