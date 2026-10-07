@@ -443,29 +443,51 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                 ElevatedButton(
                   onPressed: selectedIds.isEmpty
                       ? null
-                      : () {
+                      : () async {
                           final name = nameController.text.trim().isEmpty
                               ? null
                               : nameController.text.trim();
+                          // await 前先取出 messenger，await 之后 context 可能已失效
+                          final messenger = ScaffoldMessenger.of(context);
+                          final notifier = ref.read(
+                            wearCalendarProvider.notifier,
+                          );
+
+                          // 必须 await 并检查返回值：断网时若直接 pop，
+                          // 用户会以为记上了，其实日历里什么都没有（数据丢失错觉）。
+                          final bool ok;
                           if (existing == null) {
-                            ref
-                                .read(wearCalendarProvider.notifier)
-                                .addRecord(
-                                  date: date,
-                                  name: name,
-                                  itemIds: selectedIds.toList(),
-                                );
+                            ok = await notifier.addRecord(
+                              date: date,
+                              name: name,
+                              itemIds: selectedIds.toList(),
+                            );
                           } else {
-                            ref
-                                .read(wearCalendarProvider.notifier)
-                                .updateRecord(
-                                  existing.copyWith(
-                                    name: name,
-                                    itemIds: selectedIds.toList(),
-                                  ),
-                                );
+                            ok = await notifier.updateRecord(
+                              existing.copyWith(
+                                name: name,
+                                itemIds: selectedIds.toList(),
+                              ),
+                            );
                           }
-                          Navigator.of(ctx).pop();
+
+                          if (!mounted) return;
+
+                          if (ok) {
+                            Navigator.of(ctx).pop();
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  existing == null ? '已记录今天的穿搭' : '已保存',
+                                ),
+                              ),
+                            );
+                          } else {
+                            // 失败不关闭弹窗，让用户能直接重试
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text('保存失败，请检查网络后重试')),
+                            );
+                          }
                         },
                   child: const Text('保存'),
                 ),
@@ -498,9 +520,17 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
         ],
       ),
     );
-    if (confirmed == true) {
-      ref.read(wearCalendarProvider.notifier).deleteRecord(record.id);
-    }
+    if (confirmed != true) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await ref
+        .read(wearCalendarProvider.notifier)
+        .deleteRecord(record.id);
+    if (!mounted) return;
+
+    messenger.showSnackBar(
+      SnackBar(content: Text(ok ? '已删除' : '删除失败，请检查网络后重试')),
+    );
   }
 
   bool _isSameDay(DateTime a, DateTime b) {

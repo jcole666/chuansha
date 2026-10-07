@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/error_log.dart';
 import '../../../../../core/constants/category_data.dart';
 import '../../../../../core/constants/style_data.dart';
 import '../../../../../core/constants/color_data.dart';
@@ -83,7 +84,8 @@ class _EditItemPageState extends ConsumerState<EditItemPage> {
     _initialized = true;
   }
 
-  bool get _canSave => _category.isNotEmpty && _nameController.text.isNotEmpty;
+  bool get _canSave =>
+      _category.isNotEmpty && _nameController.text.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -462,7 +464,7 @@ class _EditItemPageState extends ConsumerState<EditItemPage> {
         // uploadedUrl 为 null 时（没换图）保留原图
         imageUrl: uploadedUrl,
         originalImageUrl: uploadedUrl,
-        name: _nameController.text,
+        name: _nameController.text.trim(),
         category: _category,
         subCategory: _subCategory,
         colors: _colors
@@ -510,11 +512,12 @@ class _EditItemPageState extends ConsumerState<EditItemPage> {
           context,
         ).showSnackBar(SnackBar(content: Text(msg)));
       }
-    } catch (e) {
+    } catch (e, s) {
+      ErrorLog.record('保存衣物', e, s);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('保存失败：$e')));
+        ).showSnackBar(const SnackBar(content: Text('保存失败，请检查网络后重试')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

@@ -39,6 +39,10 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
       ref.read(recommendProvider.notifier).load();
       // 提前加载穿搭记录，用于判断"今天已穿"按钮状态
       ref.read(wearCalendarProvider.notifier).load();
+      // 加载衣橱：冷启动判断依赖 wardrobeState.allItems，
+      // 若只依赖其它 Tab 触发，直接从「搭配」Tab 进入时会把有衣服的用户
+      // 误判成「还没录入」。
+      ref.read(wardrobeListProvider.notifier).loadItems();
     });
   }
 
@@ -64,23 +68,27 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
     WardrobeListState wardrobeState,
     WearCalendarState calendarState,
   ) {
+    // 衣物不足（冷启动）—— 必须排在天气判断之前。
+    // 否则一旦天气服务不可用（如打包漏了 OWM_API_KEY），ErrorView 会盖掉
+    // 「录入 5 件解锁推荐」的新手引导，新用户完全不知道该干嘛。
+    // 加 isLoading 守卫：衣橱还没加载完时不要误判成「没衣服」。
+    if (!wardrobeState.isLoading &&
+        wardrobeState.allItems.length <
+            AppConstants.minItemsForRecommendation) {
+      return _buildColdStart(wardrobeState.allItems.length);
+    }
+
     // 加载中
     if (state.isLoadingWeather && state.weather == null) {
       return _buildLoadingState();
     }
 
-    // 天气错误
+    // 天气不可用（面向用户的文案；缺 OWM_API_KEY 等技术细节记在 ErrorLog）
     if (state.weatherError != null && state.weather == null) {
       return ErrorView(
         message: state.weatherError!,
         onRetry: () => notifier.load(),
       );
-    }
-
-    // 衣物不足（冷启动）
-    if (wardrobeState.allItems.length <
-        AppConstants.minItemsForRecommendation) {
-      return _buildColdStart(wardrobeState.allItems.length);
     }
 
     // 主内容
@@ -116,6 +124,16 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
             (_) => const Padding(
               padding: EdgeInsets.only(bottom: 12),
               child: ShimmerCard(height: 180),
+            ),
+          )
+        else if (state.recommendError != null)
+          // 生成推荐失败（弱网 / 服务端报错）：给出明确错误 + 重试入口，
+          // 而不是让骨架屏无限转下去。
+          SizedBox(
+            height: 320,
+            child: ErrorView(
+              message: state.recommendError!,
+              onRetry: () => notifier.load(),
             ),
           )
         else if (state.recommendations.isEmpty)

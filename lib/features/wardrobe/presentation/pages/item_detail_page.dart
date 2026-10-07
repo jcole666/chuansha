@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../../core/error_log.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/utils/date_utils.dart' as date_util;
@@ -85,9 +86,10 @@ class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
           content: Text(ok ? '已记录：今天穿了「${item.name}」' : '记录失败，请检查网络后重试'),
         ),
       );
-    } catch (e) {
+    } catch (e, s) {
+      ErrorLog.record('记录穿搭', e, s);
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('记录失败：$e')));
+      messenger.showSnackBar(const SnackBar(content: Text('记录失败，请检查网络后重试')));
     } finally {
       if (mounted) setState(() => _recording = false);
     }
@@ -438,12 +440,13 @@ class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
                     context,
                   ).showSnackBar(SnackBar(content: Text('已删除「${item.name}」')));
                 }
-              } catch (e) {
-                // 删除失败：停留在详情页，给出真实错误
+              } catch (e, s) {
+                // 删除失败：停留在详情页，给出可重试的提示；细节记日志
+                ErrorLog.record('删除衣物', e, s);
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text('删除失败：$e')));
+                ).showSnackBar(const SnackBar(content: Text('删除失败，请检查网络后重试')));
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),

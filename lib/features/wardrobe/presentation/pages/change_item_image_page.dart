@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/error_log.dart';
 import '../../../../services/image_service.dart';
 import '../../../../services/matting_service.dart';
 import 'manual_matte_page.dart';
@@ -42,9 +43,10 @@ class _ChangeItemImagePageState extends State<ChangeItemImagePage> {
         _file = file;
         _error = null;
       });
-    } catch (e) {
+    } catch (e, s) {
+      ErrorLog.record('选择图片', e, s);
       if (!mounted) return;
-      setState(() => _error = '选择图片失败：$e');
+      setState(() => _error = '选择图片失败，请重试');
     }
   }
 
@@ -63,12 +65,20 @@ class _ChangeItemImagePageState extends State<ChangeItemImagePage> {
         _file = matted;
         _isLoading = false;
       });
-    } catch (e) {
+    } on MattingException catch (e) {
+      // 抠图失败是有意设计的降级引导（如「衣服占满画面，请用手动抠图」），
+      // 保留 MattingException 的引导文案，但不把原始异常透出给用户。
       if (!mounted) return;
-      // MattingException 的 toString 就是给用户看的文案
       setState(() {
         _isLoading = false;
-        _error = '$e';
+        _error = e.message;
+      });
+    } catch (e, s) {
+      ErrorLog.record('抠图', e, s);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = '抠图失败，请重试，或改用「手动抠图」';
       });
     }
   }
@@ -99,11 +109,12 @@ class _ChangeItemImagePageState extends State<ChangeItemImagePage> {
         _file = rotated;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, s) {
+      ErrorLog.record('旋转图片', e, s);
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = '旋转失败：$e';
+        _error = '旋转失败，请重试';
       });
     }
   }

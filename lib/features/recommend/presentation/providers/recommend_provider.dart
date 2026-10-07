@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/error_log.dart';
 import '../../../../data/models/weather_data.dart';
 import '../../../../data/models/clothing_item.dart';
 import '../../../../data/models/preference_feedback.dart';
@@ -18,6 +19,11 @@ class RecommendState {
   final List<RecommendationResult> recommendations;
   final bool isLoadingRecommendations;
 
+  /// 推荐生成失败时的用户可读提示（区别于 [weatherError]）。
+  /// 之前 load() 抛异常时没有任何地方复位 isLoadingRecommendations，
+  /// 导致弱网/RLS 报错时骨架屏永久转圈；现在失败会落到这里。
+  final String? recommendError;
+
   final List<List<String>> feedbackItemIds; // 本次已反馈的推荐
 
   const RecommendState({
@@ -26,6 +32,7 @@ class RecommendState {
     this.weatherError,
     this.recommendations = const [],
     this.isLoadingRecommendations = false,
+    this.recommendError,
     this.feedbackItemIds = const [],
   });
 
@@ -35,8 +42,10 @@ class RecommendState {
     String? weatherError,
     List<RecommendationResult>? recommendations,
     bool? isLoadingRecommendations,
+    String? recommendError,
     List<List<String>>? feedbackItemIds,
     bool clearWeatherError = false,
+    bool clearRecommendError = false,
   }) {
     return RecommendState(
       weather: weather ?? this.weather,
@@ -47,6 +56,9 @@ class RecommendState {
       recommendations: recommendations ?? this.recommendations,
       isLoadingRecommendations:
           isLoadingRecommendations ?? this.isLoadingRecommendations,
+      recommendError: clearRecommendError
+          ? null
+          : (recommendError ?? this.recommendError),
       feedbackItemIds: feedbackItemIds ?? this.feedbackItemIds,
     );
   }
@@ -78,20 +90,25 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
       isLoadingWeather: true,
       isLoadingRecommendations: true,
       weatherError: null,
+      clearRecommendError: true,
     );
 
     // 并行：加载天气 + 衣物 + 偏好反馈
-    final results = await Future.wait([
-      _loadWeather(),
-      _repository.getItems(userId),
-      _ref.read(preferenceProvider.notifier).load(),
-    ]);
+    //
+    // 整段包 try/catch：以前 getItems 抛错（弱网 / RLS 报错）会让 load() 直接
+    // 抛出，isLoadingRecommendations 永远停在 true —— 页面 3 个 shimmer 无限转。
+    // 现在无论成功、失败还是异常，都会复位 loading 并给出可重试的错误态。
+    try {
+      final results = await Future.wait([
+        _loadWeather(),
+        _repository.getItems(userId),
+        _ref.read(preferenceProvider.notifier).load(),
+      ]);
 
-    final weather = results[0] as WeatherData?;
-    final items = results[1] as List<ClothingItem>;
+      final weather = results[0] as WeatherData?;
+      final items = results[1] as List<ClothingItem>;
 
-    if (weather != null) {
-      if (items.length >= 5) {
+      if (weather != null && items.length >= 5) {
         final recs = _recommendationService.recommend(
           items: items,
           weather: weather,
@@ -102,19 +119,27 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
           isLoadingRecommendations: false,
         );
       } else {
+        // 天气缺失时不出推荐（页面会给出天气不可用提示 + 重试）
         state = state.copyWith(
           recommendations: [],
           isLoadingRecommendations: false,
         );
       }
+    } catch (e, s) {
+      ErrorLog.record('推荐加载', e, s);
+      state = state.copyWith(
+        isLoadingWeather: false,
+        isLoadingRecommendations: false,
+        recommendError: '推荐加载失败，请检查网络后重试',
+      );
     }
   }
 
   /// 加载天气
   ///
-  /// 天气失败不再静默：WeatherService 现在会抛 WeatherException，
-  /// 这里把 message 原样透出（文案已经在 service 里写好了），
-  /// 页面据此显示「未配置密钥」「超时」等具体原因，而不是假装有数据。
+  /// 天气失败不再静默。技术细节（缺 OWM_API_KEY、超时、状态码…）记入 ErrorLog，
+  /// 对用户只暴露一句人话，避免把「请用 --dart-define=OWM_API_KEY 启动」
+  /// 这种开发者文案直接甩到界面上。
   Future<WeatherData?> _loadWeather() async {
     try {
       final weather = await _weatherService.getWeather();
@@ -125,12 +150,17 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
       );
       return weather;
     } on WeatherException catch (e) {
-      state = state.copyWith(isLoadingWeather: false, weatherError: e.message);
-      return state.weather;
-    } catch (e) {
+      ErrorLog.record('天气服务', e);
       state = state.copyWith(
         isLoadingWeather: false,
-        weatherError: '天气数据获取失败：$e',
+        weatherError: '天气服务暂时不可用，无法生成推荐',
+      );
+      return state.weather;
+    } catch (e, s) {
+      ErrorLog.record('天气服务', e, s);
+      state = state.copyWith(
+        isLoadingWeather: false,
+        weatherError: '天气服务暂时不可用，无法生成推荐',
       );
       return state.weather;
     }
@@ -141,22 +171,34 @@ class RecommendNotifier extends StateNotifier<RecommendState> {
     final userId = _userId;
     if (userId == null) return;
 
-    state = state.copyWith(isLoadingRecommendations: true, feedbackItemIds: []);
+    state = state.copyWith(
+      isLoadingRecommendations: true,
+      feedbackItemIds: [],
+      clearRecommendError: true,
+    );
     await Future.delayed(const Duration(milliseconds: 300));
 
-    final items = await _repository.getItems(userId);
-    if (state.weather != null && items.length >= 5) {
-      final recs = _recommendationService.recommend(
-        items: items,
-        weather: state.weather!,
-        preference: _buildProfile(items),
-      );
+    try {
+      final items = await _repository.getItems(userId);
+      if (state.weather != null && items.length >= 5) {
+        final recs = _recommendationService.recommend(
+          items: items,
+          weather: state.weather!,
+          preference: _buildProfile(items),
+        );
+        state = state.copyWith(
+          recommendations: recs,
+          isLoadingRecommendations: false,
+        );
+      } else {
+        state = state.copyWith(isLoadingRecommendations: false);
+      }
+    } catch (e, s) {
+      ErrorLog.record('推荐换一批', e, s);
       state = state.copyWith(
-        recommendations: recs,
         isLoadingRecommendations: false,
+        recommendError: '推荐加载失败，请检查网络后重试',
       );
-    } else {
-      state = state.copyWith(isLoadingRecommendations: false);
     }
   }
 

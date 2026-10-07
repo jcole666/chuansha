@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/routes.dart';
+import '../../../../core/error_log.dart';
 import '../../../../core/local_store.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -85,9 +86,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     try {
       await AccountService().deleteAccount();
       // 成功后路由守卫会接管跳转；这里不需要再做什么
-    } catch (e) {
+    } catch (e, s) {
+      ErrorLog.record('注销账号', e, s);
       if (mounted) setState(() => _isDeleting = false);
-      messenger.showSnackBar(SnackBar(content: Text('$e')));
+      messenger.showSnackBar(const SnackBar(content: Text('注销失败，请检查网络后重试')));
     }
   }
 
@@ -167,8 +169,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       // 一并清掉离线数据缓存（偏好设置保留）
       await LocalStore.clearCache();
       messenger.showSnackBar(const SnackBar(content: Text('图片缓存已清除')));
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('清除失败：$e')));
+    } catch (e, s) {
+      ErrorLog.record('清除缓存', e, s);
+      messenger.showSnackBar(const SnackBar(content: Text('清除失败，请重试')));
     } finally {
       if (mounted) setState(() => _isClearing = false);
     }

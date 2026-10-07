@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/error_log.dart';
 import '../../../../../data/models/clothing_item.dart';
 import '../../../../../data/models/color_info.dart';
 import '../../../../../data/repositories/wardrobe_repository.dart';
@@ -159,9 +160,13 @@ class AddItemNotifier extends StateNotifier<AddItemState> {
         errorMessage: null,
         name: _defaultName(),
       );
-    } catch (e) {
-      // 抠图失败：保留当前图片和界面，把具体错误显示出来方便排查
-      state = state.copyWith(isLoading: false, errorMessage: '抠图失败：$e');
+    } catch (e, s) {
+      // 抠图失败：保留当前图片和界面，给用户人话引导；技术细节记日志
+      ErrorLog.record('抠图', e, s);
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: '抠图失败，请重试，或改用「手动抠图」',
+      );
     }
   }
 
@@ -212,8 +217,9 @@ class AddItemNotifier extends StateNotifier<AddItemState> {
     try {
       final rotated = await _imageService.rotateImage(state.imageFile!);
       state = state.copyWith(imageFile: rotated, isLoading: false);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: '旋转失败：$e');
+    } catch (e, s) {
+      ErrorLog.record('旋转图片', e, s);
+      state = state.copyWith(isLoading: false, errorMessage: '旋转失败，请重试');
     }
   }
 
@@ -273,8 +279,9 @@ class AddItemNotifier extends StateNotifier<AddItemState> {
       _ref.read(wardrobeListProvider.notifier).loadItems();
 
       return true;
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: '保存失败：$e');
+    } catch (e, s) {
+      ErrorLog.record('保存衣物', e, s);
+      state = state.copyWith(isLoading: false, errorMessage: '保存失败，请检查网络后重试');
       return false;
     }
   }
