@@ -218,7 +218,7 @@ class _OnboardingPageView extends StatelessWidget {
           Text(
             subtitle,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.textSecondary,
+              color: context.textSecondaryColor,
               height: 1.6,
             ),
             textAlign: TextAlign.center,

@@ -249,7 +249,7 @@ class _ManualMattePageState extends State<ManualMattePage> {
                 : '已描 ${_polygons.length} 圈，可继续补描漏掉的部分',
             style: Theme.of(
               context,
-            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+            ).textTheme.bodySmall?.copyWith(color: context.textSecondaryColor),
           ),
           const SizedBox(height: 8),
           Row(

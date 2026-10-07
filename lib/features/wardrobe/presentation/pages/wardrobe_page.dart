@@ -169,7 +169,8 @@ class _WardrobePageState extends ConsumerState<WardrobePage> {
     final allSelected = items.isNotEmpty && _selectedIds.length == items.length;
 
     return Container(
-      color: Colors.white,
+      // 跟随主题：深色模式下不能是白条
+      color: Theme.of(context).colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -267,7 +268,7 @@ class _WardrobePageState extends ConsumerState<WardrobePage> {
                 )
               : null,
           filled: true,
-          fillColor: Colors.grey.shade100,
+          fillColor: context.subtleFillColor,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
@@ -536,7 +537,7 @@ class _WardrobePageState extends ConsumerState<WardrobePage> {
           ),
           backgroundColor: isSelected
               ? Theme.of(context).colorScheme.primary
-              : Colors.grey.shade100,
+              : context.subtleFillColor,
           padding: const EdgeInsets.symmetric(horizontal: 4),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
@@ -566,7 +567,7 @@ class _WardrobePageState extends ConsumerState<WardrobePage> {
           ),
           backgroundColor: isSelected
               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-              : Colors.grey.shade100,
+              : context.subtleFillColor,
           padding: const EdgeInsets.symmetric(horizontal: 4),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
@@ -623,6 +624,7 @@ class _ClothingGridCard extends StatelessWidget {
                     child: ItemImage(
                       imageUrl: item.imageUrl,
                       fit: BoxFit.cover,
+                      thumbnailWidth: 300,
                     ),
                   ),
                   // 非 clean 状态角标（左上角）
@@ -662,7 +664,9 @@ class _ClothingGridCard extends StatelessWidget {
             // 信息条
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              color: isSelected ? Colors.blue.shade50 : Colors.white,
+              color: isSelected
+                  ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                  : Theme.of(context).colorScheme.surface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -746,6 +750,7 @@ class _ClothingListCard extends StatelessWidget {
                         child: ItemImage(
                           imageUrl: item.imageUrl,
                           fit: BoxFit.cover,
+                          thumbnailWidth: 300,
                         ),
                       ),
                     ),

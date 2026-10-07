@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/error_log.dart';
 import '../../../../data/models/preference_feedback.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -70,7 +71,9 @@ class PreferenceNotifier extends StateNotifier<List<PreferenceFeedback>> {
       });
       state = [feedback, ...state];
       return true;
-    } catch (_) {
+    } catch (e, s) {
+      // 表可能没建（见 supabase/preference_feedback.sql），记日志便于定位
+      ErrorLog.record('保存偏好反馈', e, s);
       return false;
     }
   }

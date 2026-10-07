@@ -35,6 +35,9 @@ class AppRoutes {
   /// 隐私政策
   static const String privacy = '/profile/privacy';
 
+  /// 运行日志
+  static const String log = '/profile/log';
+
   /// Outfit 搭配列表
   static const String outfits = '/outfits';
 

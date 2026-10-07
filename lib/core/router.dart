@@ -15,6 +15,7 @@ import '../features/profile/presentation/pages/stats_page.dart';
 import '../features/profile/presentation/pages/settings_page.dart';
 import '../features/profile/presentation/pages/about_page.dart';
 import '../features/profile/presentation/pages/privacy_policy_page.dart';
+import '../features/profile/presentation/pages/log_page.dart';
 import '../features/auth/presentation/pages/onboarding_page.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
@@ -172,6 +173,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (context, state) =>
             const MaterialPage(child: PrivacyPolicyPage()),
+      ),
+      GoRoute(
+        path: AppRoutes.log,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) => const MaterialPage(child: LogPage()),
       ),
     ],
   );

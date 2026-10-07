@@ -157,7 +157,7 @@ class _AddItemPageState extends ConsumerState<AddItemPage> {
               Container(
                 width: double.infinity,
                 height: 350,
-                color: Colors.grey.shade100,
+                color: context.subtleFillColor,
                 child: Image.file(state.imageFile!, fit: BoxFit.contain),
               ),
               if (state.isLoading)
@@ -239,7 +239,10 @@ class _AddItemPageState extends ConsumerState<AddItemPage> {
                       icon: const Icon(Icons.gesture, size: 18),
                       label: const Text('手动抠图'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
+                        // 跟随主题，避免深色模式下出现刺眼的白按钮
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         foregroundColor: AppTheme.primaryColor,
                         side: BorderSide(color: AppTheme.primaryColor),
                       ),

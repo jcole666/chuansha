@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/utils/date_utils.dart' as date_util;
+import '../../../../../shared/widgets/empty_state.dart';
 import '../../../../../shared/widgets/item_image.dart';
 import '../../../../../shared/widgets/clothing_status_badge.dart';
 import '../../../../../data/models/clothing_item.dart';
@@ -105,7 +106,11 @@ class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
     if (item == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('衣物不存在或已被删除')),
+        body: const EmptyState(
+          icon: Icons.checkroom_outlined,
+          title: '衣物不存在或已被删除',
+          subtitle: '它可能已被你移除',
+        ),
       );
     }
 
@@ -391,6 +396,7 @@ class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
                       child: ItemImage(
                         imageUrl: item.imageUrl,
                         fit: BoxFit.cover,
+                        thumbnailWidth: 300,
                       ),
                     ),
                   ),
@@ -560,7 +566,7 @@ class _ItemDetailPageState extends ConsumerState<ItemDetailPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: context.subtleFillColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(

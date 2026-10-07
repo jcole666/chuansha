@@ -7,6 +7,7 @@ import '../../../../../core/constants/style_data.dart';
 import '../../../../../core/constants/color_data.dart';
 import '../../../../../shared/widgets/tag_chip.dart';
 import '../../../../../shared/widgets/color_swatch.dart' as widgets;
+import '../../../../../shared/widgets/empty_state.dart';
 import '../../../../../shared/widgets/loading_overlay.dart';
 import '../../../../../shared/widgets/item_image.dart';
 import '../../../../../domain/enums/clothing_status.dart';
@@ -92,7 +93,11 @@ class _EditItemPageState extends ConsumerState<EditItemPage> {
     if (item == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('衣物不存在')),
+        body: const EmptyState(
+          icon: Icons.checkroom_outlined,
+          title: '衣物不存在',
+          subtitle: '它可能已被你移除',
+        ),
       );
     }
 
@@ -144,7 +149,11 @@ class _EditItemPageState extends ConsumerState<EditItemPage> {
                     height: 140,
                     child: _newImageFile != null
                         ? Image.file(_newImageFile!, fit: BoxFit.cover)
-                        : ItemImage(imageUrl: item.imageUrl, fit: BoxFit.cover),
+                        : ItemImage(
+                            imageUrl: item.imageUrl,
+                            fit: BoxFit.cover,
+                            thumbnailWidth: 300,
+                          ),
                   ),
                 ),
                 // 换图角标

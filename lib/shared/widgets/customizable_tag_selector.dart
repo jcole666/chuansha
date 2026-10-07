@@ -84,7 +84,7 @@ class _CustomizableTagSelectorState extends State<CustomizableTagSelector> {
                   ),
                   backgroundColor: isSelected
                       ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade100,
+                      : context.subtleFillColor,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: VisualDensity.compact,

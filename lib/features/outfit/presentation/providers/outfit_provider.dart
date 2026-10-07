@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/error_log.dart';
 import '../../../../core/local_store.dart';
 import '../../../../data/models/outfit.dart';
 import '../../../../data/models/clothing_item.dart';
@@ -123,8 +124,9 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
       await _client.from('outfits').insert(saved.toJson());
       state = state.copyWith(outfits: [saved, ...state.outfits]);
       return true;
-    } catch (_) {
-      // 失败时不改动本地状态，交由调用方提示
+    } catch (e, s) {
+      // 失败时不改动本地状态，交由调用方提示；同时记日志便于排查
+      ErrorLog.record('保存搭配', e, s);
       return false;
     }
   }
@@ -137,7 +139,8 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
         outfits: state.outfits.where((o) => o.id != id).toList(),
       );
       return true;
-    } catch (_) {
+    } catch (e, s) {
+      ErrorLog.record('删除搭配', e, s);
       return false;
     }
   }
@@ -154,7 +157,8 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
             .toList(),
       );
       return true;
-    } catch (_) {
+    } catch (e, s) {
+      ErrorLog.record('更新搭配', e, s);
       return false;
     }
   }

@@ -56,9 +56,9 @@ class EmptyState extends StatelessWidget {
             // 标题
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: AppTheme.textSecondary),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: context.textSecondaryColor,
+              ),
               textAlign: TextAlign.center,
             ),
 

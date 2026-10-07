@@ -77,6 +77,10 @@ List<MattePoint> smoothPath(List<MattePoint> pts) {
 }
 
 /// Sobel 梯度幅值图（灰度）
+///
+/// 注意：[bytes] 必须是 **RGBA** 像素数据（每像素 4 字节），
+/// 不是单通道灰度数组 —— 长度应为 `w * h * 4`，
+/// 否则会越界抛 RangeError。内部按 0.299/0.587/0.114 转灰度。
 Float32List sobelGradient(Uint8List bytes, int w, int h) {
   final gray = Float32List(w * h);
   for (var i = 0; i < gray.length; i++) {

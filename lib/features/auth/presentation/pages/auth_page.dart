@@ -101,7 +101,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
                 Container(
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: context.subtleFillColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -370,7 +370,7 @@ class _AuthPageState extends ConsumerState<AuthPage>
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppTheme.textSecondary,
+              color: isSelected ? Colors.white : context.textSecondaryColor,
               fontSize: 15,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
@@ -404,10 +404,10 @@ class _GenderCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryColor.withValues(alpha: 0.1)
-              : Colors.grey.shade50,
+              : context.subtleFillColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200,
+            color: isSelected ? AppTheme.primaryColor : context.subtleFillColor,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -426,7 +426,7 @@ class _GenderCard extends StatelessWidget {
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected
                     ? AppTheme.primaryColor
-                    : AppTheme.textSecondary,
+                    : context.textSecondaryColor,
               ),
             ),
           ],

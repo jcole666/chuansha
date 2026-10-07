@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../data/models/clothing_item.dart';
+import '../../../../../shared/widgets/empty_state.dart';
 import '../../../../../shared/widgets/item_image.dart';
 import '../../../calendar/presentation/providers/wear_calendar_provider.dart';
 import '../../../wardrobe/presentation/providers/wardrobe_provider.dart';
@@ -41,11 +42,10 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     if (items.isEmpty && records.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('穿着统计')),
-        body: Center(
-          child: Text(
-            '还没有数据，先录入衣服或记录穿搭吧',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+        body: const EmptyState(
+          icon: Icons.insights_outlined,
+          title: '还没有可统计的数据',
+          subtitle: '先录入几件衣服，或记录一次穿搭\n这里就会出现你的穿着报告',
         ),
       );
     }
@@ -182,7 +182,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: context.subtleFillColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -234,9 +234,13 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               width: 36,
               height: 36,
               child: item != null
-                  ? ItemImage(imageUrl: item.imageUrl, fit: BoxFit.cover)
+                  ? ItemImage(
+                      imageUrl: item.imageUrl,
+                      fit: BoxFit.cover,
+                      thumbnailWidth: 150,
+                    )
                   : Container(
-                      color: Colors.grey.shade200,
+                      color: context.subtleFillColor,
                       child: const Icon(
                         Icons.close,
                         size: 18,
@@ -393,7 +397,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                     Container(
                       height: 20,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
+                        color: context.subtleFillColor,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),

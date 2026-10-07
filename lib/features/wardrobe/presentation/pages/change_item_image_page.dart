@@ -195,7 +195,7 @@ class _ChangeItemImagePageState extends State<ChangeItemImagePage> {
               Container(
                 width: double.infinity,
                 height: 350,
-                color: Colors.grey.shade100,
+                color: context.subtleFillColor,
                 child: Image.file(_file!, fit: BoxFit.contain),
               ),
               if (_isLoading)
@@ -275,7 +275,10 @@ class _ChangeItemImagePageState extends State<ChangeItemImagePage> {
                       icon: const Icon(Icons.gesture, size: 18),
                       label: const Text('手动抠图'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
+                        // 跟随主题，避免深色模式下出现刺眼的白按钮
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         foregroundColor: AppTheme.primaryColor,
                         side: BorderSide(color: AppTheme.primaryColor),
                       ),

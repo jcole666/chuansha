@@ -20,7 +20,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             '更新日期：2026 年 10 月',
             style: Theme.of(
               context,
-            ).textTheme.labelSmall?.copyWith(color: AppTheme.textSecondary),
+            ).textTheme.labelSmall?.copyWith(color: context.textSecondaryColor),
           ),
           const SizedBox(height: 20),
 
@@ -75,9 +75,9 @@ class PrivacyPolicyPage extends StatelessWidget {
           Center(
             child: Text(
               '© 2026 穿啥',
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: AppTheme.textSecondary),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: context.textSecondaryColor,
+              ),
             ),
           ),
         ],
@@ -105,7 +105,7 @@ class PrivacyPolicyPage extends StatelessWidget {
               child: Text(
                 p,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondary,
+                  color: context.textSecondaryColor,
                   height: 1.7,
                 ),
               ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/error_log.dart';
 import '../../../../../core/local_store.dart';
 import '../../../../../data/models/clothing_item.dart';
 import '../../../../../data/repositories/supabase_wardrobe_repository.dart';
@@ -210,6 +211,7 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
           // 缓存坏了，走下面的错误分支
         }
       }
+      ErrorLog.record('加载衣橱', e);
       state = state.copyWith(
         errorMessage: '加载失败：$e',
         isLoading: false,

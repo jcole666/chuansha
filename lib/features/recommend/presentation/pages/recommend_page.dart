@@ -201,7 +201,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 8,
-                      backgroundColor: Colors.grey.shade200,
+                      backgroundColor: context.subtleFillColor,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         progress >= 1.0 ? Colors.green : AppTheme.primaryColor,
                       ),
@@ -401,6 +401,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                                 imageUrl: item.imageUrl,
                                 fit: BoxFit.cover,
                                 width: double.infinity,
+                                thumbnailWidth: 300,
                               ),
                             ),
                           ),
@@ -524,7 +525,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
         title: Text(
           '为什么推荐这套',
           style: theme.textTheme.labelMedium?.copyWith(
-            color: AppTheme.textSecondary,
+            color: context.textSecondaryColor,
           ),
         ),
         children: rec.scoreDetails.entries.map((e) {
@@ -544,7 +545,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                     child: LinearProgressIndicator(
                       value: ratio,
                       minHeight: 6,
-                      backgroundColor: Colors.grey.shade200,
+                      backgroundColor: context.subtleFillColor,
                       valueColor: AlwaysStoppedAnimation(
                         AppTheme.primaryColor.withValues(alpha: 0.7),
                       ),
@@ -558,7 +559,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
                     '${e.value.toStringAsFixed(0)}/${max.toStringAsFixed(0)}',
                     textAlign: TextAlign.right,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppTheme.textSecondary,
+                      color: context.textSecondaryColor,
                     ),
                   ),
                 ),
@@ -621,7 +622,7 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: context.subtleFillColor,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(

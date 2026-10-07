@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'core/router.dart';
 
 /// 应用顶层组件
@@ -24,11 +25,15 @@ class _ChuanshaAppView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 路由由 Provider 持有：登录态变化时守卫会自动重定向
     final router = ref.watch(routerProvider);
+    // 主题模式（跟随系统 / 浅色 / 深色），选择会持久化
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: '穿啥',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

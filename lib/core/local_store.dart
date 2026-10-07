@@ -17,6 +17,7 @@ class LocalStore {
 
   static const String _kOnboardingSeen = 'onboarding_seen';
   static const String _kGridView = 'wardrobe_grid_view';
+  static const String _kThemeMode = 'theme_mode';
 
   /// 离线缓存 key 前缀，便于一键清理且不误伤偏好设置
   static const String cachePrefix = 'cache_';
@@ -51,6 +52,15 @@ class LocalStore {
 
   static Future<void> setGridView(bool value) async {
     await _p?.setBool(_kGridView, value);
+  }
+
+  // ---------------- 主题模式 ----------------
+
+  /// 0 = 跟随系统，1 = 浅色，2 = 深色（同步）
+  static int get themeModeIndexSync => _p?.getInt(_kThemeMode) ?? 0;
+
+  static Future<void> setThemeModeIndex(int value) async {
+    await _p?.setInt(_kThemeMode, value);
   }
 
   // ---------------- 离线缓存 ----------------

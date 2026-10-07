@@ -215,6 +215,7 @@ class _OutfitCard extends StatelessWidget {
                       child: ItemImage(
                         imageUrl: item.imageUrl,
                         fit: BoxFit.cover,
+                        thumbnailWidth: 300,
                       ),
                     ),
                   );
@@ -386,7 +387,7 @@ class _OutfitFormDialogState extends State<_OutfitFormDialog> {
                         border: Border.all(
                           color: selected
                               ? AppTheme.primaryColor
-                              : Colors.grey.shade200,
+                              : context.subtleFillColor,
                           width: selected ? 2 : 1,
                         ),
                         borderRadius: BorderRadius.circular(8),
@@ -396,6 +397,7 @@ class _OutfitFormDialogState extends State<_OutfitFormDialog> {
                         child: ItemImage(
                           imageUrl: item.imageUrl,
                           fit: BoxFit.cover,
+                          thumbnailWidth: 300,
                         ),
                       ),
                     ),

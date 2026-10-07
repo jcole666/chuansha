@@ -336,7 +336,7 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
             '这一天还没有穿搭记录',
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
+            ).textTheme.bodyMedium?.copyWith(color: context.textSecondaryColor),
           ),
         ],
       ),
@@ -414,6 +414,7 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                                       child: ItemImage(
                                         imageUrl: item.imageUrl,
                                         fit: BoxFit.cover,
+                                        thumbnailWidth: 300,
                                       ),
                                     ),
                                   ),
@@ -595,6 +596,7 @@ class _WearRecordCard extends StatelessWidget {
                               child: ItemImage(
                                 imageUrl: item.imageUrl,
                                 fit: BoxFit.cover,
+                                thumbnailWidth: 300,
                               ),
                             ),
                           ),

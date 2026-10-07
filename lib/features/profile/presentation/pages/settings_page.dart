@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/routes.dart';
 import '../../../../core/local_store.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/gender_provider.dart';
 import '../../../wardrobe/presentation/providers/wardrobe_provider.dart';
@@ -129,6 +130,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  /// 选择主题模式（跟随系统 / 浅色 / 深色）
+  Future<void> _changeThemeMode() async {
+    final current = ref.read(themeModeProvider);
+    final picked = await showDialog<ThemeMode>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('主题'),
+        children: ThemeMode.values
+            .map(
+              (mode) => ListTile(
+                title: Text(mode.label),
+                trailing: current == mode
+                    ? Icon(Icons.check, color: AppTheme.primaryColor)
+                    : null,
+                onTap: () => Navigator.of(ctx).pop(mode),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    await ref.read(themeModeProvider.notifier).setMode(picked);
+  }
+
   Future<void> _toggleGridView(bool value) async {
     ref.read(wardrobeListProvider.notifier).setGridView(value);
     await LocalStore.setGridView(value);
@@ -178,6 +203,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final email = ref.watch(authProvider).user?.email ?? '未登录';
     final gender = ref.watch(userGenderProvider);
     final isGridView = ref.watch(wardrobeListProvider).isGridView;
+    final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
@@ -204,6 +230,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
           const Divider(height: 32),
           _sectionTitle('显示'),
+          ListTile(
+            leading: const Icon(Icons.dark_mode_outlined),
+            title: const Text('主题'),
+            subtitle: Text(themeMode.label),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: _changeThemeMode,
+          ),
           SwitchListTile(
             secondary: const Icon(Icons.grid_view_outlined),
             title: const Text('衣橱默认网格视图'),
@@ -245,6 +278,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
           const Divider(height: 32),
           ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('运行日志'),
+            subtitle: const Text('出现问题时复制出来反馈'),
+            trailing: const Icon(Icons.chevron_right, size: 20),
+            onTap: () => context.push(AppRoutes.log),
+          ),
+          ListTile(
             leading: const Icon(Icons.privacy_tip_outlined),
             title: const Text('隐私政策'),
             trailing: const Icon(Icons.chevron_right, size: 20),
@@ -279,7 +319,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: AppTheme.textSecondary,
+          color: context.textSecondaryColor,
           fontWeight: FontWeight.w600,
         ),
       ),

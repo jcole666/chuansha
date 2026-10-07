@@ -78,7 +78,7 @@ class _AboutPageState extends State<AboutPage> {
             child: Text(
               '版本 $_version',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
+                color: context.textSecondaryColor,
               ),
             ),
           ),
@@ -113,7 +113,7 @@ class _AboutPageState extends State<AboutPage> {
             child: Text(
               '© 2026 穿啥',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: AppTheme.textSecondary,
+                color: context.textSecondaryColor,
               ),
             ),
           ),
@@ -137,7 +137,7 @@ class _AboutPageState extends State<AboutPage> {
         Text(
           body,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: AppTheme.textSecondary,
+            color: context.textSecondaryColor,
             height: 1.6,
           ),
         ),
