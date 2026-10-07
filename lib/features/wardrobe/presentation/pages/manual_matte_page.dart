@@ -39,37 +39,35 @@ class ManualMattePage extends StatefulWidget {
   State<ManualMattePage> createState() => _ManualMattePageState();
 }
 
-/// 一个已确认的锚点（归一化坐标 0~1）
-class _Anchor {
-  double nx;
-  double ny;
-  _Anchor(this.nx, this.ny);
-}
-
 class _ManualMattePageState extends State<ManualMattePage> {
-  final _polygons = <List<Offset>>[]; // 已完成的多边形（归一化）— 保持与旧数据兼容
-  final _anchors = <_Anchor>[]; // 当前正在描的这一圈的锚点（归一化）
+  final _polygons = <List<Offset>>[]; // 已完成的多边形（归一化）
+
+  /// 当前这一圈的**统一点列**（归一化，按落点先后顺序）。
+  ///
+  /// 用一条列表同时装「点出来的锚点」和「拖出来的 livewire 路径」，
+  /// 因为它们本来就是**时间上交错**的：用户可能点两下、拖一段、再点一下闭合。
+  /// 如果分成两个列表，画笔拼接时会从最后一个锚点直接跳到轮廓起点，
+  /// 画面里就多一条莫名其妙的直线。
+  final _current = <Offset>[];
+
+  /// 其中被用户**显式点下**的锚点下标（画笔只给这些位置画圆点）
+  final _anchorIdx = <int>[];
+
   bool _snapToEdge = true;
   bool _processing = false;
 
   // 图像与梯度数据（像素级，供吸附/livewire 用）
-  img.Image? _decoded;
   Float32List? _grad;
   Float32List? _edgeDist;
   int _workW = 0;
   int _workH = 0;
 
-  // livewire 当前悬停预览路径（归一化，从最后一个锚点到手指位置）
+  // livewire 当前悬停预览路径（归一化，从当前路径末点到手指位置）
   List<Offset>? _previewPath;
   // 手指当前归一化位置（驱动放大镜）
   Offset? _fingerPos;
-  // 正在拖动的锚点索引（-1 = 无）
+  // 正在拖动的锚点索引（指 _current 里的下标；-1 = 无）
   int _draggingAnchor = -1;
-
-  /// 一次磁性拖动结束后固化的轮廓（归一化）——
-  /// 与 `_anchors` 二选一：要么用点描，要么用拖动画出的整条线。
-  /// `_closePolygon()` 会把它并进 `_polygons`。
-  List<Offset>? _pendingOutline;
 
   Size? _imageSize;
   bool _loading = true;
@@ -130,7 +128,6 @@ class _ManualMattePageState extends State<ManualMattePage> {
 
       if (!mounted) return;
       setState(() {
-        _decoded = working;
         _grad = grad;
         _edgeDist = edgeDist;
         _workW = w;
@@ -175,9 +172,6 @@ class _ManualMattePageState extends State<ManualMattePage> {
     );
   }
 
-  Offset _toLocal(Offset norm, Rect rect) =>
-      Offset(rect.left + norm.dx * rect.width, rect.top + norm.dy * rect.height);
-
   // ---------- livewire ----------
 
   /// 从 [from]（归一化）到 [to]（归一化）求吸附路径（归一化点列）。
@@ -217,9 +211,10 @@ class _ManualMattePageState extends State<ManualMattePage> {
   // ---------- 手势 ----------
   //
   // 交互模型（对齐 PS 磁性套索）：
-  //   - **点击（tap）**    → 落一个锚点（吸附到边缘）
-  //   - **拖动（pan）**    → livewire 预览，松手时把整条路径**固化成一圈轮廓**
+  //   - **点击（tap）**    → 在当前路径末尾落一个锚点（吸附到边缘）
+  //   - **拖动（pan）**    → livewire 预览，松手时把整条路径追加进当前路径
   //   - **点已落锚点**      → 拖动微调
+  //   - **点回起点**        → 闭合
   //
   // 关键：Flutter 在同一次拖动里会**先**触发 onTapDown、再触发 onPanStart，
   // 如果两处都落点，一次拖动就会落两个锚点（而且一个吸附过、一个没有）。
@@ -243,9 +238,11 @@ class _ManualMattePageState extends State<ManualMattePage> {
     }
 
     // 点到起点附近 → 预记"闭合"
-    if (_anchors.length >= 3) {
-      final first = _anchors.first;
-      final df = Offset(first.nx - norm.dx, first.ny - norm.dy);
+    // 同时覆盖「点出来的锚点」和「拖出来的轮廓」——否则纯靠拖描一圈的人
+    // 回到起点点一下会没反应。
+    if (_current.length >= 3) {
+      final first = _current.first;
+      final df = Offset(first.dx - norm.dx, first.dy - norm.dy);
       final distPx = math.sqrt(df.dx * df.dx + df.dy * df.dy) * rect.width;
       if (distPx < 28) {
         _pendingClose = true;
@@ -256,18 +253,26 @@ class _ManualMattePageState extends State<ManualMattePage> {
   }
 
   void _onTapUp(TapUpDetails d) {
-    setState(() {
-      if (_draggingAnchor >= 0) {
-        _draggingAnchor = -1;
-      } else if (_pendingClose) {
-        _closePolygon();
-      } else if (_pendingAnchor != null) {
-        _anchors.add(_Anchor(_pendingAnchor!.dx, _pendingAnchor!.dy));
+    final pending = _pendingAnchor;
+    final close = _pendingClose;
+    _pendingClose = false;
+    _pendingAnchor = null;
+
+    if (_draggingAnchor >= 0) {
+      setState(() => _draggingAnchor = -1);
+      return;
+    }
+    if (close) {
+      _closePolygon();
+      return;
+    }
+    if (pending != null) {
+      setState(() {
+        _current.add(pending);
+        _anchorIdx.add(_current.length - 1);
         _previewPath = null;
-      }
-      _pendingClose = false;
-      _pendingAnchor = null;
-    });
+      });
+    }
   }
 
   void _onPanStart(DragStartDetails d, Rect rect) {
@@ -291,8 +296,7 @@ class _ManualMattePageState extends State<ManualMattePage> {
     // 拖动锚点：直接移动它
     if (_draggingAnchor >= 0) {
       setState(() {
-        _anchors[_draggingAnchor].nx = norm.dx;
-        _anchors[_draggingAnchor].ny = norm.dy;
+        _current[_draggingAnchor] = norm;
         _fingerPos = norm;
       });
       return;
@@ -301,10 +305,8 @@ class _ManualMattePageState extends State<ManualMattePage> {
     final snapped = _snapPoint(norm);
     setState(() {
       _fingerPos = norm;
-      // 从"上一个锚点"（没有就是手指起点）到当前点求 livewire 路径
-      final from = _anchors.isNotEmpty
-          ? Offset(_anchors.last.nx, _anchors.last.ny)
-          : norm;
+      // 从"当前路径末点"（没有就是手指起点）到当前点求 livewire 路径
+      final from = _current.isNotEmpty ? _current.last : norm;
       final path = _livewire(from, snapped);
       if (path != null && path.length >= 2) {
         _previewPath = path;
@@ -317,18 +319,20 @@ class _ManualMattePageState extends State<ManualMattePage> {
 
   void _onPanEnd() {
     setState(() {
-      // 把预览路径固化：**不能**把它逐点当锚点 ——
-      // livewire 一条路径轻松几百个点，画笔会把锚点画成一整片白斑。
+      // 把预览路径**追加**进当前路径。
+      // 注意不能把每个点都当锚点 —— livewire 一条路径轻松几百个点，
+      // 画笔会把锚点画成一整片白斑，所以只追加为普通路径点，
+      // 锚点下标列表不动（用户没"点"它们）。
       final preview = _previewPath;
       if (preview != null && preview.length >= 2) {
         if (_snapToEdge) {
-          // 磁性走线：整条路径记为**一条轮廓**，锚点只留终点
-          // （起点已在 _anchors 里，或就是手指起点）
-          _pendingOutline = preview;
+          // 磁性走线：整条追加。跳过 path[0]（= 当前末点，避免重复）
+          final start = _current.isEmpty ? 0 : 1;
+          _current.addAll(preview.skip(start));
         } else {
-          // 自由手绘：抽稀后落成锚点，保持可编辑
+          // 自由手绘：抽稀后追加
           for (final p in resampleOffsets(preview, 0.02)) {
-            _anchors.add(_Anchor(p.dx, p.dy));
+            _current.add(p);
           }
         }
       }
@@ -338,36 +342,36 @@ class _ManualMattePageState extends State<ManualMattePage> {
     });
   }
 
+  /// 命中已有锚点。只对**用户显式点下**的锚点（`_anchorIdx`）做命中，
+  /// 否则用户想点新位置时会被 livewire 路径上的密集点抢走。
   int _hitAnchor(Offset norm, Rect rect) {
-    for (var i = _anchors.length - 1; i >= 0; i--) {
-      final a = _anchors[i];
-      final dx = (a.nx - norm.dx) * rect.width;
-      final dy = (a.ny - norm.dy) * rect.height;
+    for (var k = _anchorIdx.length - 1; k >= 0; k--) {
+      final i = _anchorIdx[k];
+      if (i < 0 || i >= _current.length) continue;
+      final a = _current[i];
+      final dx = (a.dx - norm.dx) * rect.width;
+      final dy = (a.dy - norm.dy) * rect.height;
       if (dx * dx + dy * dy < 26 * 26) return i;
     }
     return -1;
   }
 
   void _closePolygon() {
-    if (_anchors.length < 3 && _pendingOutline == null) return;
+    if (_current.length < 3) return;
     setState(() {
-      final poly = <Offset>[
-        ..._anchors.map((a) => Offset(a.nx, a.ny)),
-        if (_pendingOutline != null) ..._pendingOutline!,
-      ];
-      if (poly.length >= 3) _polygons.add(poly);
-      _anchors.clear();
-      _pendingOutline = null;
+      _polygons.add(List<Offset>.from(_current));
+      _current.clear();
+      _anchorIdx.clear();
       _previewPath = null;
     });
   }
 
   void _undoLast() {
     setState(() {
-      if (_anchors.isNotEmpty) {
-        _anchors.removeLast();
-      } else if (_pendingOutline != null) {
-        _pendingOutline = null;
+      if (_current.isNotEmpty) {
+        _current.removeLast();
+        // 若删掉的正是锚点，同步修正锚点下标（并丢掉越界的）
+        _anchorIdx.removeWhere((i) => i >= _current.length);
       } else if (_polygons.isNotEmpty) {
         _polygons.removeLast();
       }
@@ -377,22 +381,19 @@ class _ManualMattePageState extends State<ManualMattePage> {
 
   void _clearAll() {
     setState(() {
-      _anchors.clear();
+      _current.clear();
+      _anchorIdx.clear();
       _polygons.clear();
-      _pendingOutline = null;
       _previewPath = null;
       _fingerPos = null;
+      _draggingAnchor = -1;
     });
   }
 
   Future<void> _finish() async {
-    // 还有没闭合的圈 → 自动闭合（锚点 + 拖出的轮廓一起收）
+    // 还有没闭合的圈 → 自动闭合
     final polys = <List<Offset>>[..._polygons];
-    final open = <Offset>[
-      ..._anchors.map((a) => Offset(a.nx, a.ny)),
-      if (_pendingOutline != null) ..._pendingOutline!,
-    ];
-    if (open.length >= 3) polys.add(open);
+    if (_current.length >= 3) polys.add(List<Offset>.from(_current));
     if (polys.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -469,10 +470,11 @@ class _ManualMattePageState extends State<ManualMattePage> {
                                     child: CustomPaint(
                                       painter: _LassoPainter(
                                         polygons: _polygons,
-                                        anchors: _anchors
-                                            .map((a) => Offset(a.nx, a.ny))
+                                        current: _current,
+                                        anchors: _anchorIdx
+                                            .where((i) => i < _current.length)
+                                            .map((i) => _current[i])
                                             .toList(),
-                                        outline: _pendingOutline,
                                         preview: _previewPath,
                                         imageRect: rect,
                                         accent: AppTheme.primaryColor,
@@ -526,13 +528,12 @@ class _ManualMattePageState extends State<ManualMattePage> {
   }
 
   Widget _buildToolbar() {
-    final hasWork =
-        _anchors.isNotEmpty || _pendingOutline != null || _polygons.isNotEmpty;
-    final canClose = _anchors.length + (_pendingOutline?.length ?? 0) >= 3;
+    final hasWork = _current.isNotEmpty || _polygons.isNotEmpty;
+    final canClose = _current.length >= 3;
     final tip = _snapToEdge
         ? (_polygons.isNotEmpty
               ? '已描 ${_polygons.length} 圈，可继续补描漏掉的部分'
-              : _anchors.isEmpty && _pendingOutline == null
+              : _current.isEmpty
               ? '沿衣服边缘点一下落点；也可按住拖动让线自动吸附边缘'
               : '继续点/拖描完一圈，回到起点点一下闭合')
         : (_polygons.isNotEmpty
@@ -601,18 +602,22 @@ class _ManualMattePageState extends State<ManualMattePage> {
 /// 描边预览画笔：选区外半透明白 + 轮廓线 + 锚点小圆
 class _LassoPainter extends CustomPainter {
   final List<List<Offset>> polygons;
+
+  /// 当前这一圈的完整点列（归一化，含点出来的锚点与拖出来的路径点）
+  final List<Offset> current;
+
+  /// 其中被用户显式点下的锚点（归一化，画圆点用）
   final List<Offset> anchors;
 
-  /// 拖动画出的、已固化但尚未闭合的轮廓（归一化）
-  final List<Offset>? outline;
+  /// 悬停时的 livewire 预览（归一化，从 `current` 末点到手指）
   final List<Offset>? preview;
   final Rect imageRect;
   final Color accent;
 
   const _LassoPainter({
     required this.polygons,
+    required this.current,
     required this.anchors,
-    required this.outline,
     required this.preview,
     required this.imageRect,
     required this.accent,
@@ -630,12 +635,11 @@ class _LassoPainter extends CustomPainter {
       if (poly.length < 2) continue;
       paths.add(Path()..addPolygon(poly.map(_map).toList(), true));
     }
-    // 当前圈（锚点 + 已固化轮廓 + 预览路径）
+    // 当前圈（已落点 + 预览路径）
     final currentPts = <Offset>[];
-    currentPts.addAll(anchors.map(_map));
-    if (outline != null) currentPts.addAll(outline!.map(_map));
+    currentPts.addAll(current.map(_map));
     if (preview != null) {
-      // 预览路径的第 0 点是上一个锚点/轮廓终点，跳过避免重复
+      // 预览路径第 0 点是当前末点，跳过避免重复
       currentPts.addAll(preview!.skip(1).map(_map));
     }
     Path? currentPath;
