@@ -143,7 +143,8 @@ class WearCalendarNotifier extends StateNotifier<WearCalendarState> {
           .toList();
       state = WearCalendarState(records: records, isLoading: false);
     } catch (_) {
-      state = state.copyWith(isLoading: false);
+      // 失败时清空旧数据，避免残留上一个账号的穿搭记录
+      state = state.copyWith(records: const [], isLoading: false);
     }
   }
 
@@ -258,5 +259,8 @@ class WearCalendarNotifier extends StateNotifier<WearCalendarState> {
 /// 穿搭日历 Provider
 final wearCalendarProvider =
     StateNotifierProvider<WearCalendarNotifier, WearCalendarState>((ref) {
+      // 监听当前用户：换账号时 provider 自动重建、状态归零，
+      // 避免新账号看到上一个账号的穿搭记录（跨账号数据泄漏）。
+      ref.watch(currentUserIdProvider);
       return WearCalendarNotifier(ref);
     });

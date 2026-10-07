@@ -213,7 +213,10 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
       }
       ErrorLog.record('加载衣橱', e);
       state = state.copyWith(
-        errorMessage: '加载失败：$e',
+        // 失败时清空旧数据：避免上一个账号的衣物残留在内存里，
+        // 换账号/断网时把别人的衣物展示出来（缓存回退分支在上面已 return）。
+        allItems: const [],
+        errorMessage: '加载失败，请检查网络后重试',
         isLoading: false,
         isOffline: true,
       );
@@ -230,8 +233,9 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
       await _repository.addItem(item);
       await loadItems();
       return true;
-    } catch (e) {
-      state = state.copyWith(errorMessage: '添加失败：$e');
+    } catch (e, s) {
+      ErrorLog.record('添加衣物', e, s);
+      state = state.copyWith(errorMessage: '保存失败，请检查网络后重试');
       rethrow;
     }
   }
@@ -242,8 +246,9 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
       await _repository.updateItem(item);
       await loadItems();
       return true;
-    } catch (e) {
-      state = state.copyWith(errorMessage: '更新失败：$e');
+    } catch (e, s) {
+      ErrorLog.record('更新衣物', e, s);
+      state = state.copyWith(errorMessage: '保存失败，请检查网络后重试');
       rethrow;
     }
   }
@@ -254,8 +259,9 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
       await _repository.deleteItem(itemId);
       await loadItems();
       return true;
-    } catch (e) {
-      state = state.copyWith(errorMessage: '删除失败：$e');
+    } catch (e, s) {
+      ErrorLog.record('删除衣物', e, s);
+      state = state.copyWith(errorMessage: '删除失败，请检查网络后重试');
       rethrow;
     }
   }
@@ -280,8 +286,9 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
           .toList();
       state = state.copyWith(allItems: updated);
       return true;
-    } catch (e) {
-      state = state.copyWith(errorMessage: '批量更新失败：$e');
+    } catch (e, s) {
+      ErrorLog.record('批量更新衣物', e, s);
+      state = state.copyWith(errorMessage: '保存失败，请检查网络后重试');
       rethrow;
     }
   }
@@ -372,6 +379,9 @@ class WardrobeListNotifier extends StateNotifier<WardrobeListState> {
 /// 衣橱列表 Provider
 final wardrobeListProvider =
     StateNotifierProvider<WardrobeListNotifier, WardrobeListState>((ref) {
+      // 监听当前用户：换账号时 provider 自动重建、状态归零，
+      // 避免新账号看到上一个账号的衣物（跨账号数据泄漏）。
+      ref.watch(currentUserIdProvider);
       final repository = ref.watch(wardrobeRepositoryProvider);
       return WardrobeListNotifier(repository, ref);
     });

@@ -82,5 +82,8 @@ class PreferenceNotifier extends StateNotifier<List<PreferenceFeedback>> {
 /// 偏好反馈 Provider
 final preferenceProvider =
     StateNotifierProvider<PreferenceNotifier, List<PreferenceFeedback>>((ref) {
+      // 监听当前用户：换账号时 provider 自动重建、状态归零，
+      // 避免新账号看到上一个账号的偏好反馈（跨账号数据泄漏）。
+      ref.watch(currentUserIdProvider);
       return PreferenceNotifier(ref);
     });

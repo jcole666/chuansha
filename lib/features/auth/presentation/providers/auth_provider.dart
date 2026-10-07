@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/error_log.dart';
+import '../../../../core/local_store.dart';
+
 /// 认证状态
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -96,14 +99,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: res.user != null ? null : '注册成功，请前往邮箱验证后登录',
       );
     } on AuthException catch (e) {
+      ErrorLog.record('注册', e);
       state = state.copyWith(
         errorMessage: _getErrorMessage(e.message),
         isLoading: false,
       );
     } on TimeoutException {
       state = state.copyWith(errorMessage: '连接超时，请检查网络后重试', isLoading: false);
-    } catch (e) {
-      state = state.copyWith(errorMessage: '注册失败：$e', isLoading: false);
+    } catch (e, s) {
+      ErrorLog.record('注册', e, s);
+      state = state.copyWith(errorMessage: '注册失败，请检查网络后重试', isLoading: false);
     }
   }
 
@@ -117,12 +122,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // 成功后 onAuthStateChange 会更新状态，这里确保复位
       state = state.copyWith(isLoading: false);
     } on AuthException catch (e) {
+      ErrorLog.record('登录', e);
       state = state.copyWith(
         errorMessage: _getErrorMessage(e.message),
         isLoading: false,
       );
-    } catch (e) {
-      state = state.copyWith(errorMessage: '登录失败：$e', isLoading: false);
+    } catch (e, s) {
+      ErrorLog.record('登录', e, s);
+      state = state.copyWith(errorMessage: '登录失败，请检查网络后重试', isLoading: false);
     }
   }
 
@@ -144,11 +151,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
           .timeout(const Duration(seconds: 20));
       return null;
     } on AuthException catch (e) {
+      ErrorLog.record('重置密码', e);
       return _getErrorMessage(e.message);
     } on TimeoutException {
       return '连接超时，请检查网络后重试';
-    } catch (e) {
-      return '发送失败：$e';
+    } catch (e, s) {
+      ErrorLog.record('重置密码', e, s);
+      return '发送失败，请检查网络后重试';
     }
   }
 
@@ -158,12 +167,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// 路由守卫（core/router.dart）会自动把用户送回登录页，无需页面手动跳转。
   Future<void> signOut() async {
     final client = clientOrNull;
-    if (client == null) return;
+    if (client != null) {
+      try {
+        await client.auth.signOut();
+      } catch (_) {
+        // 退出失败时兜底：本地也要回到未登录态，避免 UI 与实际会话不一致
+        state = const AuthState(status: AuthStatus.unauthenticated);
+      }
+    }
+    // 退出后清空离线缓存：否则下一个账号在断网时会读到上一个账号的缓存数据。
+    // 清缓存失败不应阻塞登出，故单独 try/catch。
     try {
-      await client.auth.signOut();
+      await LocalStore.clearCache();
     } catch (_) {
-      // 退出失败时兜底：本地也要回到未登录态，避免 UI 与实际会话不一致
-      state = const AuthState(status: AuthStatus.unauthenticated);
+      // 忽略：清缓存失败不影响登出主流程
     }
   }
 
@@ -187,7 +204,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (lower.contains('password should be at least')) {
       return '密码至少 6 位';
     }
-    return '认证失败：$raw';
+    return '认证失败，请稍后重试';
   }
 }
 

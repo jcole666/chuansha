@@ -40,9 +40,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
 
       // 引导页是否算「可停留」取决于用户看没看过：
-      // 看过之后就不该再回到引导页了
+      // 看过之后就不该再回到引导页了。
+      // 这里必须**实时读取** LocalStore，不能用 router 创建时闭包捕获的旧值——
+      // 否则「看完引导 → 注册 → 退出登录」会因闭包里的旧值仍是 false
+      // 而被塞回引导页（冷启动后才正常）。
       final isOnboarding = location == AppRoutes.onboarding;
-      final onboardingAllowed = !seenOnboarding;
+      final onboardingAllowed = !LocalStore.seenOnboardingSync;
       final isLogin = location == AppRoutes.login;
 
       // Supabase 还没给出初始会话（含未初始化的场景）：先不动，

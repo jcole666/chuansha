@@ -103,7 +103,12 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
           // 缓存坏了，走下面的降级分支
         }
       }
-      state = state.copyWith(isLoading: false, isOffline: true);
+      // 失败且没有可用缓存：清空旧数据，避免展示上一个账号的搭配
+      state = state.copyWith(
+        outfits: const [],
+        isLoading: false,
+        isOffline: true,
+      );
     }
   }
 
@@ -167,5 +172,8 @@ class OutfitListNotifier extends StateNotifier<OutfitListState> {
 /// Outfit Provider
 final outfitListProvider =
     StateNotifierProvider<OutfitListNotifier, OutfitListState>((ref) {
+      // 监听当前用户：换账号时 provider 自动重建、状态归零，
+      // 避免新账号看到上一个账号的搭配（跨账号数据泄漏）。
+      ref.watch(currentUserIdProvider);
       return OutfitListNotifier(ref);
     });
