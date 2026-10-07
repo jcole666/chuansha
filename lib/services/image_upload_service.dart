@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import '../core/error_log.dart';
 
 /// 图片上传服务
 ///
@@ -7,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// 返回公开访问 URL
 class ImageUploadService {
   static const String _bucket = 'clothing';
+
+  static const _uuid = Uuid();
 
   SupabaseClient get _client => Supabase.instance.client;
 
@@ -20,8 +24,12 @@ class ImageUploadService {
   }) async {
     final ext = file.path.split('.').last.toLowerCase();
     final safeExt = ext.length > 1 && ext.length <= 4 ? ext : 'jpg';
-    final path =
-        'users/$userId/${DateTime.now().millisecondsSinceEpoch}.$safeExt';
+
+    // 文件名用随机 UUID 而不是时间戳：
+    // bucket 目前是 public（URL 无需鉴权即可访问），时间戳可被预测、
+    // 配合 userId 就能推出他人图片地址。随机名让路径不可枚举/不可猜，
+    // 与 rls_policies.sql 里收紧后的读策略形成双重防护。
+    final path = 'users/$userId/${_uuid.v4()}.$safeExt';
 
     await _client.storage.from(_bucket).upload(path, file);
 
@@ -53,7 +61,9 @@ class ImageUploadService {
     try {
       await _client.storage.from(_bucket).remove([path]);
       return true;
-    } catch (_) {
+    } catch (e, s) {
+      // 删不掉会留孤儿文件，记日志便于排查
+      ErrorLog.record('删除旧图', e, s);
       return false;
     }
   }

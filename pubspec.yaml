@@ -9,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
 
   # 后端（Supabase，无需 Google 服务）
   supabase_flutter: ^2.8.1

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/error_log.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth_provider.dart';
@@ -71,8 +72,9 @@ class UserGenderNotifier extends StateNotifier<UserGender> {
           state = UserGender.unknown;
       }
       _loadedFor = userId;
-    } catch (_) {
-      // 静默失败：保持 unknown，界面走「显示全部」兜底
+    } catch (e, s) {
+      // 保持 unknown，界面走「显示全部」兜底；但记日志便于排查
+      ErrorLog.record('读取性别', e, s);
       state = UserGender.unknown;
     }
   }

@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/error_log.dart';
+
 /// 账号服务：注销账号（删除账号本身 + 全部数据）
 ///
 /// 应用市场（尤其 App Store）审核要求提供账号删除入口。
@@ -60,8 +62,9 @@ class AccountService {
             .toList(growable: false);
         await _client.storage.from(_bucket).remove(paths);
       }
-    } catch (_) {
-      // 忽略：残留的图片不会导致注销失败
+    } catch (e, s) {
+      // 容忍：残留图片不会导致注销失败，但记日志便于事后清理
+      ErrorLog.record('注销-删除图片', e, s);
     }
 
     // 3. 删除业务数据行。
