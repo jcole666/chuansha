@@ -66,6 +66,8 @@ class _ManualMattePageState extends State<ManualMattePage> {
   List<Offset>? _previewPath;
   // 手指当前归一化位置（驱动放大镜）
   Offset? _fingerPos;
+  // 上一次真正重算 livewire 时的手指位置（用来做移动阈值节流）
+  Offset? _lastLivewireAt;
   // 正在拖动的锚点索引（指 _current 里的下标；-1 = 无）
   int _draggingAnchor = -1;
 
@@ -279,6 +281,7 @@ class _ManualMattePageState extends State<ManualMattePage> {
     // 拖动优先：作废这次 tap 预记的落点 / 闭合意图
     _pendingAnchor = null;
     _pendingClose = false;
+    _lastLivewireAt = null; // 新的一笔，节流基准重置
 
     final norm = _toNormalized(d.localPosition, rect);
     final hit = _hitAnchor(norm, rect);
@@ -303,6 +306,21 @@ class _ManualMattePageState extends State<ManualMattePage> {
     }
 
     final snapped = _snapPoint(norm);
+
+    // 移动阈值节流：指针事件触发极密（每帧多次），
+    // 为 1~2 像素的抖动重跑一次最短路纯属浪费。
+    // 位移小于 3px 时只更新放大镜位置，不重算路径。
+    final last = _lastLivewireAt;
+    if (last != null) {
+      final mdx = (norm.dx - last.dx) * rect.width;
+      final mdy = (norm.dy - last.dy) * rect.height;
+      if (mdx * mdx + mdy * mdy < 3 * 3) {
+        setState(() => _fingerPos = norm);
+        return;
+      }
+    }
+    _lastLivewireAt = norm;
+
     setState(() {
       _fingerPos = norm;
       // 从"当前路径末点"（没有就是手指起点）到当前点求 livewire 路径
@@ -338,6 +356,7 @@ class _ManualMattePageState extends State<ManualMattePage> {
       }
       _previewPath = null;
       _fingerPos = null;
+      _lastLivewireAt = null;
       _draggingAnchor = -1;
     });
   }

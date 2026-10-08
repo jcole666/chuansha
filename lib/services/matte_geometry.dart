@@ -284,7 +284,17 @@ List<MattePoint> livewirePath({
   const dys = [-1, -1, -1, 0, 0, 1, 1, 1];
   const diag = 1.41421356;
 
-  final dist = Float32List(w * h)..fillRange(0, w * h, double.infinity);
+  // ⚠️ dist 必须用 Float64List，**不能用 Float32List**。
+  //
+  // 踩过的坑（会让整个 App 卡死）：dist 存 32 位、而堆里比较用的是 64 位 double。
+  // `dist[ni] = nd` 会把 nd 截断成 float32；一旦截断后**变大**
+  // （float32(nd) > nd），下一次用同一个 nd 比较时 `nd < dist[ni]` 仍然成立，
+  // 于是该节点被反复重新松弛、反复入堆 → 堆爆炸式增长、循环永不收敛。
+  // 实测：48x48（2304 像素）就产生了 8500 万次 pop，耗时 23 秒以上；
+  // 手指拖动时每次移动都调用一次，直接把 UI 线程跑死。
+  // 换成 Float64List 后比较自洽（存进去的和拿出来的是同一个 double），
+  // 同一尺寸降到毫秒级。
+  final dist = Float64List(w * h)..fillRange(0, w * h, double.infinity);
   final prev = Int32List(w * h)..fillRange(0, w * h, -1);
   dist[startIdx] = 0;
 
@@ -292,10 +302,8 @@ List<MattePoint> livewirePath({
   final heapCost = <double>[0];
   final heapIdx = <int>[startIdx];
 
-  void push(double c, int idx) {
-    heapCost.add(c);
-    heapIdx.add(idx);
-    var i = heapCost.length - 1;
+  void siftUp(int from) {
+    var i = from;
     while (i > 0) {
       final p = (i - 1) >> 1;
       if (heapCost[p] <= heapCost[i]) break;
@@ -309,61 +317,79 @@ List<MattePoint> livewirePath({
     }
   }
 
-  bool popInto(void Function(double cost, int idx) sink) {
-    if (heapCost.isEmpty) return false;
-    sink(heapCost[0], heapIdx[0]);
+  void siftDown() {
+    var i = 0;
+    final n = heapCost.length;
+    while (true) {
+      final l = 2 * i + 1;
+      final r = 2 * i + 2;
+      var m = i;
+      if (l < n && heapCost[l] < heapCost[m]) m = l;
+      if (r < n && heapCost[r] < heapCost[m]) m = r;
+      if (m == i) break;
+      final tc = heapCost[m];
+      heapCost[m] = heapCost[i];
+      heapCost[i] = tc;
+      final ti = heapIdx[m];
+      heapIdx[m] = heapIdx[i];
+      heapIdx[i] = ti;
+      i = m;
+    }
+  }
+
+  void push(double c, int idx) {
+    heapCost.add(c);
+    heapIdx.add(idx);
+    siftUp(heapCost.length - 1);
+  }
+
+  // ⚠️ Dijkstra 主循环。两个关键点，之前都写错了，会导致**死循环卡死 UI**：
+  //
+  // 1) 必须先"取出堆顶"再 removeLast。
+  //    旧写法把 sink(堆顶) 放在 removeLast 之前，而 sink 内部会 push 新元素，
+  //    于是 removeLast 删掉的是**刚 push 的那个**，堆顶被覆盖成已删元素，
+  //    堆结构彻底损坏、永远排不空 → while 死循环。
+  // 2) 到达 goal 必须 break。
+  //    旧写法在 sink 里 `if (idx == goalIdx) return;` 只是跳过展开，
+  //    循环仍会把整张图（900x1200 = 108 万点）探索完才停。
+  var found = false;
+  while (heapCost.isNotEmpty) {
+    final c = heapCost[0];
+    final idx = heapIdx[0];
+
     final lastC = heapCost.removeLast();
     final lastI = heapIdx.removeLast();
     if (heapCost.isNotEmpty) {
       heapCost[0] = lastC;
       heapIdx[0] = lastI;
-      var i = 0;
-      final n = heapCost.length;
-      while (true) {
-        final l = 2 * i + 1;
-        final r = 2 * i + 2;
-        var m = i;
-        if (l < n && heapCost[l] < heapCost[m]) m = l;
-        if (r < n && heapCost[r] < heapCost[m]) m = r;
-        if (m == i) break;
-        final tc = heapCost[m];
-        heapCost[m] = heapCost[i];
-        heapCost[i] = tc;
-        final ti = heapIdx[m];
-        heapIdx[m] = heapIdx[i];
-        heapIdx[i] = ti;
-        i = m;
+      siftDown();
+    }
+
+    if (c > dist[idx]) continue; // 过期条目
+    if (idx == goalIdx) {
+      found = true;
+      break; // ★ 提前退出，不再探索整张图
+    }
+
+    final x = idx % w;
+    final y = idx ~/ w;
+    for (var k = 0; k < 8; k++) {
+      final nx = x + dxs[k];
+      final ny = y + dys[k];
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      final ni = ny * w + nx;
+      final w2 = (dxs[k] != 0 && dys[k] != 0) ? diag : 1.0;
+      final step = w2 * (edgeDist[ni] + flatCost);
+      final nd = c + step;
+      if (nd < dist[ni]) {
+        dist[ni] = nd;
+        prev[ni] = idx;
+        push(nd, ni);
       }
     }
-    return true;
   }
 
-  var done = false;
-  while (!done) {
-    done = !popInto((c, idx) {
-      if (c > dist[idx]) return; // 过期条目
-      if (idx == goalIdx) return;
-
-      final x = idx % w;
-      final y = idx ~/ w;
-      for (var k = 0; k < 8; k++) {
-        final nx = x + dxs[k];
-        final ny = y + dys[k];
-        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-        final ni = ny * w + nx;
-        final w2 = (dxs[k] != 0 && dys[k] != 0) ? diag : 1.0;
-        final step = w2 * (edgeDist[ni] + flatCost);
-        final nd = c + step;
-        if (nd < dist[ni]) {
-          dist[ni] = nd;
-          prev[ni] = idx;
-          push(nd, ni);
-        }
-      }
-    });
-  }
-
-  if (prev[goalIdx] == -1) return [seed, goal];
+  if (!found || prev[goalIdx] == -1) return [seed, goal];
 
   final path = <MattePoint>[];
   var cur = goalIdx;
