@@ -11,7 +11,7 @@ Flutter + Riverpod + Supabase 构建，无需 Google 服务，Android / iOS 双�
 | 模块 | 说明 |
 |---|---|
 | **衣橱** | 拍照/相册录入衣物，自动抠图去背景，分类、颜色、季节、场合、风格多维标签，支持筛选、搜索、排序 |
-| **抠图** | 双方案：**智能抠图**（接 MODNet AI 分割模型，花地板/杂背景/浅色衣服都能抠；模型不可用时自动降级为纯色背景算法）+ **手动抠图**（PS 风磁性套索，沿边缘点/拖自动吸附，右上角放大镜防手指遮挡） |
+| **抠图** | 双方案：**智能抠图**（AI 分割模型：优先 **RMBG-1.4**，不可用时自动退到 **MODNet**，再不行才降级为纯色背景算法）+ **手动抠图**（PS 风磁性套索，沿边缘点/拖自动吸附，右上角放大镜防手指遮挡） |
 | **搭配推荐** | 根据实时天气（温度/降水）从你的衣橱里推荐穿搭组合，可 👍/👎 反馈 |
 | **穿搭日历** | 记录每天穿了什么，自动累计衣物穿着次数，计算性价比 |
 | **统计** | 穿着频次、性价比排行 |
@@ -169,7 +169,7 @@ lib/
 │   └── repositories/          # 仓库层（Supabase 实现 + 内存实现）
 ├── domain/enums/          # 领域枚举
 ├── services/              # 无状态服务
-│   ├── ai_matting_service.dart     # AI 智能抠图（MODNet ONNX 推理 → alpha 合成白底）
+│   ├── ai_matting_service.dart     # AI 智能抠图（RMBG-1.4 → MODNet 两级 ONNX 推理 → alpha 合成白底）
 │   ├── matting_service.dart        # 降级抠图（纯色背景洪水填充 + 后处理）
 │   ├── manual_matte_service.dart   # 手动抠图（描边 + 扫描线填充）
 │   ├── matte_geometry.dart         # 抠图几何算法（Sobel/距离场/Livewire 最短路，纯 Dart 可单测）
@@ -182,7 +182,8 @@ lib/
 ├── shared/widgets/        # 复用组件
 assets/
 └── models/                # AI 抠图模型
-    ├── modnet_fp16.onnx           # MODNet 主体分割（fp16，约 12MB）
+    ├── rmbg14_fp16.onnx           # RMBG-1.4 通用背景去除（fp16，约 84MB）★首选
+    ├── modnet_fp16.onnx           # MODNet 人像分割（fp16，约 12MB）兜底
     ├── modnet_config.json         # 模型来源参考（注：其中 dtype 标注与权重实际精度不一致）
     └── modnet_preprocessor.json   # 预处理参数（mean/std/短边/整除倍数，代码据此实现）
 ```
@@ -191,14 +192,20 @@ assets/
 
 ## 已知限制
 
-- **智能抠图**接的是 MODNet 分割模型（ONNX），能处理花纹地板、衣服堆叠、浅色衣服等复杂背景。
-  模型不可用（机型不支持 / 内存不足）时**自动降级**到纯色背景算法，不会堵死入口。
+- **智能抠图**接的是 ONNX 分割模型，**两级降级**：
+  1. **RMBG-1.4**（首选）—— 通用背景去除，低对比度（白衣服+白背景）、杂物、水印都能处理干净；
+     代价是模型 84MB、输入固定 1024×1024，手机上推理需要数秒。
+     ⚠️ 许可是 **CC BY-NC 4.0（仅限非商用）**，个人自用没问题。
+  2. **MODNet**（兜底）—— 只有 12MB、512 输入很快，但它本质是**人像**抠图模型，
+     对单件衣服 + 干净背景够用，低对比度场景会吃力。
+  3. 两者都不可用（机型不支持 / 内存不足）时**自动降级**到纯色背景算法，不会堵死入口。
   衣服占满整个画面时仍建议用**手动抠图**。
 - **手动抠图**是 PS 磁性套索风格：点一下落锚点（自动吸附边缘），也可按住沿边拖动走自动吸附线；
   右上角常驻放大镜，避免手指挡住视线。
 - 天气依赖第三方 API，免费额度有限；未配置密钥时功能降级为提示而非假数据。
 - 目前仅支持邮箱注册登录，暂无第三方登录。
-- AI 模型会让 APK 体积增大约 12MB 以上（模型 + onnxruntime native 库）。
+- AI 模型会让 APK 体积明显增大（RMBG 84MB + MODNet 12MB + onnxruntime native 库）。
+  若不在意低对比度场景的质量，可以只保留 MODNet 以省体积。
 
 ---
 
@@ -211,7 +218,8 @@ flutter test             # 单元测试
 dart format lib/         # 格式化
 ```
 
-> AI 抠图依赖 `onnxruntime` 与 `assets/models/modnet_fp16.onnx`（约 12MB，已入库）。
+> AI 抠图依赖 `onnxruntime` 与 `assets/models/` 下的两个模型
+> （`rmbg14_fp16.onnx` 84MB + `modnet_fp16.onnx` 12MB，均已入库）。
 > 换机器 / 拉新代码后先 `flutter pub get`，否则 `AiMattingService` 无法编译。
 
 > 若 `flutter analyze` 报 `CreateFile failed 231（管道范例都在使用中）`，
