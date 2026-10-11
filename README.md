@@ -63,7 +63,40 @@ flutter run --dart-define=OWM_API_KEY=你的密钥
 flutter run --dart-define-from-file=config.json
 ```
 
-### 3. 配置 Supabase（首次部署必做）
+### 3. 日常开发：用热重载，不要反复打包
+
+改一行代码就重新 `flutter build apk` + 拷手机 + 安装，一轮要 5 分钟；用 `flutter run`
+连上真机后是**热重载**，改完 1 秒就生效。
+
+```bash
+# 双击 run_dev.bat 即可（内含代理探测，和 build_apk.bat 同一套逻辑）
+# 或手动：
+flutter devices     # 确认手机已识别
+flutter run         # 然后按 r = 热重载，R = 热重启，q = 退出
+```
+
+**手机第一次要开 USB 调试**：设置 → 关于手机 → 连点「版本号」7 次 → 开发者选项 →
+打开「USB 调试」→ 插线后在手机上允许调试。
+
+**也可以无线**（手机和电脑同一个 Wi-Fi）：
+
+```bash
+adb tcpip 5555
+adb shell ip route          # 记下手机的 IP
+adb connect 手机IP:5555
+# 之后拔掉数据线也能 flutter run
+```
+
+> ⚠️ **不要用 Android 模拟器测抠图**：`onnxruntime` 插件只提供 `arm64-v8a` /
+> `armeabi-v7a` 的预编译库，**没有 x86_64**。模拟器是 x86 架构，装上去
+> `libonnxruntime.so` 加载不了，AI 抠图会静默降级成旧的纯色背景算法，
+> 测出来的效果没有参考价值。
+>
+> 想在电脑上跑需要 **Windows 桌面版**（`onnxruntime` / `jni` 都支持 Windows），
+> 但要先装 Visual Studio 的「使用 C++ 的桌面开发」组件（约 7–10GB），
+> 且 `image_picker` 在 Windows 上只能选文件、不能拍照。
+
+### 4. 配置 Supabase（首次部署必做）
 
 Supabase 项目 URL 与 publishable key 已写在 `lib/core/supabase_config.dart`，
 通常无需改动。**但行级安全（RLS）策略必须手动执行一次**：
@@ -88,7 +121,7 @@ Supabase 项目 URL 与 publishable key 已写在 `lib/core/supabase_config.dart
 
 Storage 需要名为 `clothing` 的 bucket，图片路径约定 `users/{userId}/xxx.jpg`。
 
-### 4. 运行
+### 5. 运行
 
 ```bash
 flutter run --dart-define=OWM_API_KEY=你的密钥
