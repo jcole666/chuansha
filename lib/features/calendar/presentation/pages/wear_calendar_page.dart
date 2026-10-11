@@ -619,9 +619,12 @@ class _WearRecordCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            // 衣服缩略图
+            // 衣服缩略图。
+            // 高度给足、并用 BoxFit.contain —— 衣物图基本都是竖长的
+            // （抠图后是白底），用 cover 塞进矮框里会被横向裁掉，
+            // 只能看到衣服的上半截。
             SizedBox(
-              height: 70,
+              height: 150,
               child: items.isEmpty
                   ? Center(
                       child: Text(
@@ -637,11 +640,14 @@ class _WearRecordCard extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: ItemImage(
-                                imageUrl: item.imageUrl,
-                                fit: BoxFit.cover,
-                                thumbnailWidth: 300,
+                              borderRadius: BorderRadius.circular(8),
+                              child: ColoredBox(
+                                color: context.subtleFillColor,
+                                child: ItemImage(
+                                  imageUrl: item.imageUrl,
+                                  fit: BoxFit.contain,
+                                  thumbnailWidth: 400,
+                                ),
                               ),
                             ),
                           ),

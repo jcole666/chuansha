@@ -20,19 +20,25 @@ import '../../../../services/matte_geometry.dart';
 /// 4. 已落下的锚点可以**拖动微调**（长按拖动锚点）
 /// 5. 右上角常驻**放大镜**：手指在哪就把那块放大显示，不被手指挡住
 ///
-/// 「自动吸附」开关关掉后，退化成自由手绘（和旧版一致）。
+/// 「自动吸附」开关打开后，可切换成 PS 磁性套索（点/拖时自动贴到边缘）。
+///
+/// 默认是**自由手绘**：手指沿衣服边缘慢慢描一圈就行，所见即所得。
+/// 磁性套索很强但需要理解交互（点落锚点 / 拖动走吸附线），
+/// 对多数人来说"我自己描"更直观，所以放在开关后面作为进阶功能。
 ///
 /// 返回抠好的图片 [File]，取消返回 null。
 class ManualMattePage extends StatefulWidget {
   final File imageFile;
 
-  /// 是否默认开启边缘吸附
+  /// 是否默认开启边缘吸附。
+  ///
+  /// 默认 **false**：自由手绘优先。磁性套索在工具条上可随时打开。
   final bool initialSnap;
 
   const ManualMattePage({
     super.key,
     required this.imageFile,
-    this.initialSnap = true,
+    this.initialSnap = false,
   });
 
   @override
@@ -549,15 +555,17 @@ class _ManualMattePageState extends State<ManualMattePage> {
   Widget _buildToolbar() {
     final hasWork = _current.isNotEmpty || _polygons.isNotEmpty;
     final canClose = _current.length >= 3;
-    final tip = _snapToEdge
-        ? (_polygons.isNotEmpty
-              ? '已描 ${_polygons.length} 圈，可继续补描漏掉的部分'
-              : _current.isEmpty
-              ? '沿衣服边缘点一下落点；也可按住拖动让线自动吸附边缘'
-              : '继续点/拖描完一圈，回到起点点一下闭合')
-        : (_polygons.isNotEmpty
-              ? '已描 ${_polygons.length} 圈，可继续补描漏掉的部分'
-              : '手指沿衣服边缘描一圈，松手自动闭合成选区');
+    // 提示文案：自由手绘是默认模式，说清楚"描一圈 → 点完成"就够了；
+    // 磁性套索要说清楚它需要点/拖。
+    final tip = _polygons.isNotEmpty
+        ? '已描 ${_polygons.length} 圈，可继续补描漏掉的部分'
+        : _current.isEmpty
+        ? (_snapToEdge
+              ? '沿衣服边缘点一下落点；也可按住拖动，线会自动吸附边缘'
+              : '手指沿衣服边缘慢慢描一圈，描完点「完成」')
+        : (_snapToEdge
+              ? '继续点/拖描完一圈，回到起点点一下即可闭合'
+              : '继续描，或点「闭合」结束这一圈');
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       decoration: BoxDecoration(
@@ -649,12 +657,18 @@ class _LassoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paths = <Path>[];
+    // 只有**已经闭合**的圈才参与"选区外压暗"的遮罩。
+    final closedPaths = <Path>[];
     for (final poly in polygons) {
       if (poly.length < 2) continue;
-      paths.add(Path()..addPolygon(poly.map(_map).toList(), true));
+      closedPaths.add(Path()..addPolygon(poly.map(_map).toList(), true));
     }
-    // 当前圈（已落点 + 预览路径）
+
+    // 当前这一圈（还没闭合）：**只画轮廓线**。
+    //
+    // 之前把未闭合的当前路径也丢进遮罩，而 Path.combine 对未闭合路径会
+    // 隐式把首尾连起来 —— 于是刚点下一个点、或刚拖出一小段，就会画出一个
+    // 楔形/扇形的压暗区。用户看到的就是"点了之后冒出来一个扇形"。
     final currentPts = <Offset>[];
     currentPts.addAll(current.map(_map));
     if (preview != null) {
@@ -666,16 +680,16 @@ class _LassoPainter extends CustomPainter {
       currentPath = Path()..addPolygon(currentPts, false);
     }
 
-    final allForMask = <Path>[...paths];
-    if (currentPath != null) allForMask.add(currentPath);
-    if (allForMask.isNotEmpty) {
+    // 选区外压暗。只在有闭合圈时才算（正在描第一圈时 polygons 为空，
+    // 完全跳过，绘制时零开销）。
+    if (closedPaths.isNotEmpty) {
       var outside = Path.combine(
         PathOperation.difference,
         Path()..addRect(Offset.zero & size),
-        allForMask.first,
+        closedPaths.first,
       );
-      for (var i = 1; i < allForMask.length; i++) {
-        outside = Path.combine(PathOperation.difference, outside, allForMask[i]);
+      for (var i = 1; i < closedPaths.length; i++) {
+        outside = Path.combine(PathOperation.difference, outside, closedPaths[i]);
       }
       canvas.drawPath(
         outside,
@@ -689,7 +703,7 @@ class _LassoPainter extends CustomPainter {
       ..strokeWidth = 2.2
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
-    for (final p in paths) {
+    for (final p in closedPaths) {
       canvas.drawPath(p, stroke);
     }
     if (currentPath != null) canvas.drawPath(currentPath, stroke);
