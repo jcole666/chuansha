@@ -115,8 +115,9 @@ class WearCalendarState {
     final now = DateTime.now();
     final counts = <String, int>{};
     for (final r in records) {
-      if (r.wearDate.year != now.year || r.wearDate.month != now.month)
+      if (r.wearDate.year != now.year || r.wearDate.month != now.month) {
         continue;
+      }
       for (final id in r.itemIds) {
         counts[id] = (counts[id] ?? 0) + 1;
       }

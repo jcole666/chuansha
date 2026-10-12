@@ -486,7 +486,9 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
                             );
                           }
 
-                          if (!mounted) return;
+                          // 对话框可能已被关掉：ctx 是弹窗自己的 BuildContext，
+                          // 跨 await 使用要单独用 ctx.mounted 兜底（State.mounted 只管 State.context）。
+                          if (!mounted || !ctx.mounted) return;
 
                           if (ok) {
                             Navigator.of(ctx).pop();
@@ -536,6 +538,8 @@ class _WearCalendarPageState extends ConsumerState<WearCalendarPage> {
       ),
     );
     if (confirmed != true) return;
+    // showDialog 之后已经跨过一次 await，用 context 前必须确认 State 还挂着
+    if (!mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
     final ok = await ref

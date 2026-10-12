@@ -188,7 +188,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   var disposed = false;
 
   // 登录态变化 → 重新跑一次 redirect（等价于 refreshListenable）
-  ref.listen<AuthState>(authProvider, (_, __) {
+  ref.listen<AuthState>(authProvider, (_, _) {
     // 放到微任务里，避免在 build 期间直接触发 Router 重建
     Future.microtask(() {
       if (!disposed) router.refresh();

@@ -247,7 +247,7 @@ void main() {
 
   group('livewirePath 磁性套索最短路', () {
     // 造一个水平强边缘带：y = 5 那一行是边缘
-    Float32List _horizontalEdgeDist(int w, int h) {
+    Float32List horizontalEdgeDist(int w, int h) {
       final feature = Uint8List(w * h);
       for (var x = 0; x < w; x++) {
         feature[5 * w + x] = 1;
@@ -256,7 +256,7 @@ void main() {
     }
 
     test('起终点同点：直接返回两点', () {
-      final ed = _horizontalEdgeDist(20, 12);
+      final ed = horizontalEdgeDist(20, 12);
       final path = livewirePath(
         seed: const MattePoint(3, 5),
         goal: const MattePoint(3, 5),
@@ -269,7 +269,7 @@ void main() {
 
     test('沿边缘走：路径绝大部分点都在边缘行附近', () {
       const w = 24, h = 12;
-      final ed = _horizontalEdgeDist(w, h);
+      final ed = horizontalEdgeDist(w, h);
       final path = livewirePath(
         seed: const MattePoint(2, 5),
         goal: const MattePoint(21, 5),
@@ -309,7 +309,7 @@ void main() {
 
     test('路径首尾与请求的点一致', () {
       const w = 20, h = 20;
-      final ed = _horizontalEdgeDist(w, 20);
+      final ed = horizontalEdgeDist(w, 20);
       final path = livewirePath(
         seed: const MattePoint(1, 1),
         goal: const MattePoint(18, 18),
@@ -325,7 +325,7 @@ void main() {
 
     test('越界的起终点被钳制而不崩', () {
       const w = 10, h = 10;
-      final ed = _horizontalEdgeDist(w, h);
+      final ed = horizontalEdgeDist(w, h);
       final path = livewirePath(
         seed: const MattePoint(-5, -5),
         goal: const MattePoint(99, 99),

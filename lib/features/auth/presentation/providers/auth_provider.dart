@@ -147,7 +147,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// （不传时至少会落到 Supabase 的 Site URL，用户在网页里能改完密码）。
   ///
   /// 待配置深链后再改：
-  ///   1. pubspec 加 app_links，AndroidManifest 加 <intent-filter>（scheme）
+  ///   1. pubspec 加 app_links，AndroidManifest 加 `<intent-filter>`（scheme）
   ///      且 iOS Info.plist 加 CFBundleURLSchemes；
   ///   2. 下面改成
   ///      `resetPasswordForEmail(trimmed, redirectTo: '<scheme>://reset-callback')`；

@@ -164,8 +164,9 @@ class RecommendationService {
     if (temp > 30) return ['短袖', '背心'].any((s) => sub.contains(s));
     if (temp >= 25) return ['短袖', '衬衫'].any((s) => sub.contains(s));
     if (temp >= 20) return ['短袖', '长袖', '衬衫'].any((s) => sub.contains(s));
-    if (temp >= 15)
+    if (temp >= 15) {
       return ['长袖', '卫衣', '衬衫', '针织衫'].any((s) => sub.contains(s));
+    }
     if (temp >= 10) return ['卫衣', '针织衫', '衬衫'].any((s) => sub.contains(s));
     if (temp >= 5) return ['针织衫'].any((s) => sub.contains(s));
     if (temp >= 0) return ['针织衫', '长袖'].any((s) => sub.contains(s));
@@ -174,10 +175,12 @@ class RecommendationService {
 
   bool _isBottomSuitable(String sub, double temp) {
     if (temp > 30) return ['短裤'].any((s) => sub.contains(s));
-    if (temp >= 20)
+    if (temp >= 20) {
       return ['短裤', '牛仔长裤', '休闲长裤', '半裙'].any((s) => sub.contains(s));
-    if (temp >= 10)
+    }
+    if (temp >= 10) {
       return ['牛仔长裤', '休闲长裤', '西装长裤', '半裙'].any((s) => sub.contains(s));
+    }
     return ['牛仔长裤', '休闲长裤', '西装长裤'].any((s) => sub.contains(s));
   }
 
