@@ -389,10 +389,7 @@ void main() {
 
     test('点数不足 3 时为 0', () {
       expect(polygonArea([const MattePoint(0, 0)]), 0);
-      expect(
-        polygonArea([const MattePoint(0, 0), const MattePoint(1, 1)]),
-        0,
-      );
+      expect(polygonArea([const MattePoint(0, 0), const MattePoint(1, 1)]), 0);
     });
   });
 

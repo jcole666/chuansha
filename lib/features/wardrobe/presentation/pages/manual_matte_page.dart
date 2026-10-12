@@ -560,12 +560,8 @@ class _ManualMattePageState extends State<ManualMattePage> {
     final tip = _polygons.isNotEmpty
         ? '已描 ${_polygons.length} 圈，可继续补描漏掉的部分'
         : _current.isEmpty
-        ? (_snapToEdge
-              ? '沿衣服边缘点一下落点；也可按住拖动，线会自动吸附边缘'
-              : '手指沿衣服边缘慢慢描一圈，描完点「完成」')
-        : (_snapToEdge
-              ? '继续点/拖描完一圈，回到起点点一下即可闭合'
-              : '继续描，或点「闭合」结束这一圈');
+        ? (_snapToEdge ? '沿衣服边缘点一下落点；也可按住拖动，线会自动吸附边缘' : '手指沿衣服边缘慢慢描一圈，描完点「完成」')
+        : (_snapToEdge ? '继续点/拖描完一圈，回到起点点一下即可闭合' : '继续描，或点「闭合」结束这一圈');
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       decoration: BoxDecoration(
@@ -689,7 +685,11 @@ class _LassoPainter extends CustomPainter {
         closedPaths.first,
       );
       for (var i = 1; i < closedPaths.length; i++) {
-        outside = Path.combine(PathOperation.difference, outside, closedPaths[i]);
+        outside = Path.combine(
+          PathOperation.difference,
+          outside,
+          closedPaths[i],
+        );
       }
       canvas.drawPath(
         outside,
@@ -774,9 +774,7 @@ class _Loupe extends StatelessWidget {
               ),
             ),
             // 十字准星
-            CustomPaint(
-              painter: _CrosshairPainter(color: accent),
-            ),
+            CustomPaint(painter: _CrosshairPainter(color: accent)),
           ],
         ),
       ),

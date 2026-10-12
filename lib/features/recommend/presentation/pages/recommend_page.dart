@@ -305,7 +305,9 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
       return '衣橱里的衣服都不在「已洗好」状态，把常用的几件标记回已洗好就会出推荐了';
     }
 
-    final usable = clean.where((i) => !_excludedCategories.contains(i.category));
+    final usable = clean.where(
+      (i) => !_excludedCategories.contains(i.category),
+    );
     if (usable.isEmpty) {
       return '衣橱里还没有能参与搭配的上衣 / 下装 / 鞋'
           '（套装、内衣、配饰不参与推荐），先录几件基础款试试';
@@ -319,7 +321,8 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
     );
     final shoes = usable.where(
       (i) =>
-          i.category == '鞋' && _isShoesSuitable(i.subCategory ?? '', temp, weather),
+          i.category == '鞋' &&
+          _isShoesSuitable(i.subCategory ?? '', temp, weather),
     );
     final dresses = usable.where(
       (i) => i.category == '连衣裙' && _isDressSuitable(temp),
@@ -838,14 +841,10 @@ class _RecommendPageState extends ConsumerState<RecommendPage> {
   bool _isBottomSuitable(String sub, double temp) {
     if (temp > 30) return const ['短裤'].any((s) => sub.contains(s));
     if (temp >= 20) {
-      return const ['短裤', '牛仔长裤', '休闲长裤', '半裙'].any(
-        (s) => sub.contains(s),
-      );
+      return const ['短裤', '牛仔长裤', '休闲长裤', '半裙'].any((s) => sub.contains(s));
     }
     if (temp >= 10) {
-      return const ['牛仔长裤', '休闲长裤', '西装长裤', '半裙'].any(
-        (s) => sub.contains(s),
-      );
+      return const ['牛仔长裤', '休闲长裤', '西装长裤', '半裙'].any((s) => sub.contains(s));
     }
     return const ['牛仔长裤', '休闲长裤', '西装长裤'].any((s) => sub.contains(s));
   }

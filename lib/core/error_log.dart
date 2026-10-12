@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/foundation.dart';
 

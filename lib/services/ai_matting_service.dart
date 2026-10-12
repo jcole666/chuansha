@@ -185,10 +185,8 @@ class AiMattingService {
         final p = (rowBase + x) * 4;
         final idx = rowBase + x;
         // 标准化：(v/255 - mean) / std
-        inputData[idx] =
-            (rgba[p] / 255.0 - spec.mean) / spec.std;
-        inputData[plane + idx] =
-            (rgba[p + 1] / 255.0 - spec.mean) / spec.std;
+        inputData[idx] = (rgba[p] / 255.0 - spec.mean) / spec.std;
+        inputData[plane + idx] = (rgba[p + 1] / 255.0 - spec.mean) / spec.std;
         inputData[plane * 2 + idx] =
             (rgba[p + 2] / 255.0 - spec.mean) / spec.std;
       }

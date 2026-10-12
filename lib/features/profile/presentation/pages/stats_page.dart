@@ -329,15 +329,16 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     final filtered = items.where(
       (i) => i.isLongNotWorn(AppConstants.longNotWornDays),
     );
-    final sorted = List<ClothingItem>.from(filtered)..sort((a, b) {
-      // 「从未穿过」（lastWornDate == null）排在最前面，其余按日期从早到晚
-      final da = a.lastWornDate;
-      final db = b.lastWornDate;
-      if (da == null && db == null) return 0;
-      if (da == null) return -1;
-      if (db == null) return 1;
-      return da.compareTo(db);
-    });
+    final sorted = List<ClothingItem>.from(filtered)
+      ..sort((a, b) {
+        // 「从未穿过」（lastWornDate == null）排在最前面，其余按日期从早到晚
+        final da = a.lastWornDate;
+        final db = b.lastWornDate;
+        if (da == null && db == null) return 0;
+        if (da == null) return -1;
+        if (db == null) return 1;
+        return da.compareTo(db);
+      });
     return sorted.take(5).toList();
   }
 
